@@ -1,4 +1,4 @@
-# :new_zealand: News Aggregator
+# :new_zealand: News Aggregator - This is f*%*ng the News (P Gower)
 
 A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Zealand news sources, stores them in Azure Cosmos DB (database), and displays them in a modern React interface.
 
