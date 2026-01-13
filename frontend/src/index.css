@@ -318,7 +318,7 @@ header p {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background 0.2s;
+  transition: background 0.6s;
 }
 
 .modal-close:hover {
@@ -367,4 +367,185 @@ header p {
 
 .modal-content .article-link:hover {
   background: #5568d3;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.pagination button {
+  background: #667eea;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pagination button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.page-info {
+  font-size: 1rem;
+  color: #333;
+}
+.spacer {
+  height: 50px;
+}
+.footer {
+  background: linear-gradient(135deg, #1a3197 0%, #c59af0 100%);
+  color: white;
+  padding: 2rem;
+}
+.footer p {
+  margin: 0;
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+.footer a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+.footer a:hover {
+  text-decoration: underline;
+}
+.footer .separator {
+  margin: 0 0.5rem;
+  color: white;
+  opacity: 0.6;
+}
+
+body {
+  background-color: #dadada;
+  color: #1f2023bb;
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1f2023bb;
+    color: #dadada;
+  }
+}
+
+/* Dark mode when toggled by user */
+body.dark {
+  background-color: #1f2023bb;
+  color: #e6e6e6;
+}
+
+body.dark header {
+  background: linear-gradient(135deg, #0d1736 0%, #5b3766 100%);
+  color: #fff;
+}
+
+body.dark .article-card,
+body.dark .modal-content,
+body.dark .filters,
+body.dark .stats-box {
+  background: #0e0e0f;
+  color: #e6e6e6;
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.678);
+}
+
+body.dark .article-card h3,
+body.dark .modal-content h2 {
+  color: #fff;
+}
+
+body.dark .article-card .description,
+body.dark .modal-content .article-description,
+body.dark .filter-group label {
+  color: #d0d0d0;
+}
+
+body.dark .refresh-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: #e6e6e6;
+}
+
+body.dark .footer {
+  background: linear-gradient(135deg, #0d1736 0%, #5b3766 100%);
+}
+
+/* Additional dark-mode tweaks for form controls, badges, pagination and messages */
+body.dark .filter-group input,
+body.dark .filter-group select,
+body.dark .filter-group textarea {
+  background: #0f1113;
+  color: #e6e6e6;
+  border: 1px solid #2b2b2f;
+}
+
+body.dark .filter-group input:focus,
+body.dark .filter-group select:focus,
+body.dark .filter-group textarea:focus {
+  outline: none;
+  border-color: #5b76ff;
+  box-shadow: 0 0 0 3px rgba(91,118,255,0.12);
+}
+
+body.dark .page-info {
+  color: #e6e6e6;
+}
+
+body.dark .pagination button {
+  background: #26272b48;
+  color: #e6e6e6;
+}
+
+body.dark .pagination button:hover:not(:disabled) {
+  background: #33363b;
+}
+
+body.dark .pagination button:disabled {
+  background: #9b8cfb;
+  color: #7a7a7a;
+}
+
+body.dark .article-card .source {
+  background: #9b8cfb;
+  color: #0b0b0b;
+}
+
+body.dark .stat-divider {
+  background: rgba(255,255,255,0.12);
+}
+
+body.dark .refresh-message.info {
+  background: rgba(66,153,225,0.12);
+  color: #cfeaff;
+  border-left: 4px solid #2b6cb0;
+}
+body.dark .refresh-message.success {
+  background: rgba(72,187,120,0.08);
+  color: #c6f6d5;
+  border-left: 4px solid #2f855a;
+}
+body.dark .refresh-message.error {
+  background: rgba(245, 101, 101, 0.5);
+  color: #ffd6d6;
+  border-left: 4px solid #9b2c2c;
+}
+
+body.dark .modal-overlay {
+  background: rgba(88, 88, 88, 0.486);
+}
+
+/* ensure links/buttons in dark mode are readable */
+body.dark a,
+body.dark .article-card .article-link,
+body.dark .modal-content .article-link {
+  color: #9bb7ff;
 }
