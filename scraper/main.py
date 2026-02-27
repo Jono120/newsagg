@@ -1,12 +1,14 @@
+import argparse
+import logging
 import os
 import time
-import logging
+
 import schedule
 from dotenv import load_dotenv
 from scrapers import get_all_scrapers
 from services.article_service import ArticleService
 from services.content_extractor import extract_content
-import argparse
+from services.sentiment_analyzer import analyze_text_sentiment_and_terms
 
 # Configure logging
 logging.basicConfig(
@@ -44,6 +46,18 @@ class ScraperOrchestrator:
                 
                 if articles:
                     total_scraped += len(articles)
+
+                    for art in articles:
+                        sentiment = analyze_text_sentiment_and_terms(
+                            getattr(art, 'title', ''),
+                            getattr(art, 'description', '')
+                        )
+                        art.sentiment_label = sentiment.label
+                        art.sentiment_score = sentiment.score
+                        art.sentiment_confidence = sentiment.confidence
+                        art.positive_words = sentiment.positive_words
+                        art.negative_words = sentiment.negative_words
+
                     # Optionally extract article content before sending
                     extract_flag = os.getenv('SCRAPE_EXTRACT_CONTENT', '1')
                     if extract_flag and extract_flag.lower() not in ('0', 'false', 'no'):

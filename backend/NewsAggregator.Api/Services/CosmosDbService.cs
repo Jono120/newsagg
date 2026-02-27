@@ -224,6 +224,62 @@ public class CosmosDbService : ICosmosDbService
         return results;
     }
 
+    public async Task<Dictionary<string, int>> GetArticleCountsBySentimentAsync()
+    {
+        if (_container == null) throw new InvalidOperationException("Container not initialized");
+
+        var query = _container.GetItemQueryIterator<dynamic>(
+            new QueryDefinition("SELECT c.sentimentLabel AS sentimentLabel, COUNT(1) as count FROM c GROUP BY c.sentimentLabel"));
+
+        var results = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["positive"] = 0,
+            ["neutral"] = 0,
+            ["negative"] = 0
+        };
+
+        while (query.HasMoreResults)
+        {
+            var response = await query.ReadNextAsync();
+            foreach (var item in response)
+            {
+                var rawLabel = item.sentimentLabel?.ToString();
+                var label = string.IsNullOrWhiteSpace(rawLabel)
+                    ? "neutral"
+                    : rawLabel.Trim().ToLowerInvariant();
+
+                var count = (int)item.count;
+
+                if (!results.ContainsKey(label))
+                {
+                    label = "neutral";
+                }
+
+                results[label] += count;
+            }
+        }
+
+        return results;
+    }
+
+    public async Task<IEnumerable<Article>> GetArticlesSinceAsync(DateTimeOffset since)
+    {
+        if (_container == null) throw new InvalidOperationException("Container not initialized");
+
+        var query = _container.GetItemQueryIterator<Article>(
+            new QueryDefinition("SELECT * FROM c WHERE c.publishedDate >= @since")
+                .WithParameter("@since", since.ToString("o")));
+
+        var results = new List<Article>();
+        while (query.HasMoreResults)
+        {
+            var response = await query.ReadNextAsync();
+            results.AddRange(response);
+        }
+
+        return results;
+    }
+
     public async Task<long> GetTotalArticleCountAsync()
     {
         if (_container == null) throw new InvalidOperationException("Container not initialized");

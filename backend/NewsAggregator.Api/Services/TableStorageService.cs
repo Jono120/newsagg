@@ -251,6 +251,56 @@ public class TableStorageService : ICosmosDbService
         }
     }
 
+    public async Task<Dictionary<string, int>> GetArticleCountsBySentimentAsync()
+    {
+        try
+        {
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["positive"] = 0,
+                ["neutral"] = 0,
+                ["negative"] = 0
+            };
+
+            await foreach (var article in _tableClient.QueryAsync<ArticleTableEntity>())
+            {
+                var label = (article.SentimentLabel ?? "neutral").Trim().ToLowerInvariant();
+                if (!counts.ContainsKey(label))
+                {
+                    label = "neutral";
+                }
+
+                counts[label]++;
+            }
+
+            return counts;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting article counts by sentiment");
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<Article>> GetArticlesSinceAsync(DateTimeOffset since)
+    {
+        try
+        {
+            var articles = new List<Article>();
+            await foreach (var entity in _tableClient.QueryAsync<ArticleTableEntity>(e => e.PublishedDate >= since))
+            {
+                articles.Add(entity.ToArticle());
+            }
+
+            return articles.OrderByDescending(a => a.PublishedDate).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving articles since {Since}", since);
+            throw;
+        }
+    }
+
     public async Task<long> GetTotalArticleCountAsync()
     {
         try
@@ -284,6 +334,9 @@ public class ArticleTableEntity : ITableEntity
     public string? Category { get; set; }
     public DateTimeOffset PublishedDate { get; set; }
     public DateTimeOffset ScrapedDate { get; set; }
+    public string? SentimentLabel { get; set; }
+    public double SentimentScore { get; set; }
+    public double SentimentConfidence { get; set; }
 
     public static ArticleTableEntity FromArticle(Article article)
     {
@@ -296,7 +349,10 @@ public class ArticleTableEntity : ITableEntity
             Description = article.Description,
             Category = article.Category,
             PublishedDate = article.PublishedDate,
-            ScrapedDate = article.ScrapedDate
+            ScrapedDate = article.ScrapedDate,
+            SentimentLabel = article.SentimentLabel,
+            SentimentScore = article.SentimentScore,
+            SentimentConfidence = article.SentimentConfidence
         };
     }
 
@@ -311,7 +367,10 @@ public class ArticleTableEntity : ITableEntity
             Description = Description ?? string.Empty,
             Category = Category ?? "General",
             PublishedDate = PublishedDate,
-            ScrapedDate = ScrapedDate
+            ScrapedDate = ScrapedDate,
+            SentimentLabel = SentimentLabel ?? "neutral",
+            SentimentScore = SentimentScore,
+            SentimentConfidence = SentimentConfidence
         };
     }
 }

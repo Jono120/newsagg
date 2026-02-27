@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Union
+from typing import List, Optional, Union
 from dateutil import parser, tz
 
 class Article:
@@ -11,7 +11,12 @@ class Article:
         source: str,
         category: str = "General",
         published_date: Optional[Union[datetime, str]] = None,
-        content: str = ''
+        content: str = '',
+        sentiment_label: str = 'neutral',
+        sentiment_score: float = 0.0,
+        sentiment_confidence: float = 0.0,
+        positive_words: Optional[List[str]] = None,
+        negative_words: Optional[List[str]] = None
     ):
         self.title = title
         self.description = description
@@ -25,6 +30,11 @@ class Article:
         else:
             self.published_date = published_date
         self.content = content
+        self.sentiment_label = sentiment_label
+        self.sentiment_score = sentiment_score
+        self.sentiment_confidence = sentiment_confidence
+        self.positive_words = positive_words or []
+        self.negative_words = negative_words or []
 
     def to_dict(self):
         """Convert article to dictionary for API submission.
@@ -42,7 +52,7 @@ class Article:
         elif isinstance(self.published_date, str):
             try:
                 dt = parser.parse(self.published_date)
-            except Exception:
+            except (ValueError, TypeError, OverflowError):
                 dt = None
 
         if dt is None:
@@ -65,7 +75,12 @@ class Article:
             "source": self.source,
             "category": self.category,
             "publishedDate": pub_date,
-            "content": self.content
+            "content": self.content,
+            "sentimentLabel": self.sentiment_label,
+            "sentimentScore": self.sentiment_score,
+            "sentimentConfidence": self.sentiment_confidence,
+            "positiveWords": self.positive_words,
+            "negativeWords": self.negative_words
         }
 
     def __repr__(self):

@@ -15,5 +15,7 @@ public interface ICosmosDbService
     Task<Article?> GetArticleByUrlAsync(string url);
     Task<(int added, int skipped, List<string> errors)> AddArticlesBatchAsync(IEnumerable<Article> articles);
     Task<Dictionary<string, int>> GetArticleCountsBySourceAsync();
+    Task<Dictionary<string, int>> GetArticleCountsBySentimentAsync();
+    Task<IEnumerable<Article>> GetArticlesSinceAsync(DateTimeOffset since);
     Task<long> GetTotalArticleCountAsync();
 }

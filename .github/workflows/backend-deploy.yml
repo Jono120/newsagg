@@ -1,0 +1,37 @@
+name: Backend CI/CD
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install dependencies
+        run: dotnet restore backend/NewsAggregator.Api/NewsAggregator.Api.csproj
+
+      - name: Build
+        run: dotnet publish backend/NewsAggregator.Api/NewsAggregator.Api.csproj -c Release -o publish
+
+      - name: 'Login to Azure'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          package: publish

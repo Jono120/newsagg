@@ -40,6 +40,20 @@ function Filters({ filters, onFilterChange, sources, categories }) {
             ))}
           </select>
         </div>
+
+        <div className="filter-group">
+          <label htmlFor="sentiment">Sentiment</label>
+          <select
+            id="sentiment"
+            value={filters.sentiment}
+            onChange={(e) => onFilterChange('sentiment', e.target.value)}
+          >
+            <option value="">All Sentiments</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+          </select>
+        </div>
       </div>
     </div>
   )

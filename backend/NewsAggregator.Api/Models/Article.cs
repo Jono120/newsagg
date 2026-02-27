@@ -40,4 +40,19 @@ public class Article
     [JsonPropertyName("content")]
     [JsonProperty(PropertyName = "content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("sentimentLabel")]
+    [JsonProperty(PropertyName = "sentimentLabel")]
+    public string SentimentLabel { get; set; } = "neutral";
+
+    [JsonPropertyName("sentimentScore")]
+    [JsonProperty(PropertyName = "sentimentScore")]
+    public double SentimentScore { get; set; } = 0.0;
+
+    [JsonPropertyName("sentimentConfidence")]
+    [JsonProperty(PropertyName = "sentimentConfidence")]
+    public double SentimentConfidence { get; set; } = 0.0;
+
+    public List<string> PositiveWords { get; set; } = new();
+    public List<string> NegativeWords { get; set; } = new();
 }

@@ -1,0 +1,40 @@
+name: Frontend Deploy
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload build to Storage static website
+        run: |
+          az storage blob upload-batch \
+            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            -s frontend/dist -d '$web'

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 
@@ -8,6 +9,8 @@ namespace NewsAggregator.Api.Controllers;
 [Route("api/[controller]")]
 public class ScraperController : ControllerBase
 {
+    private static readonly ConcurrentDictionary<int, byte> ActiveScraperProcesses = new();
+
     private readonly ILogger<ScraperController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
@@ -68,6 +71,7 @@ public class ScraperController : ControllerBase
             };
 
             process.Start();
+            ActiveScraperProcesses.TryAdd(process.Id, 0);
 
             // Log the output asynchronously without waiting for completion
             _ = Task.Run(async () =>
@@ -90,6 +94,11 @@ public class ScraperController : ControllerBase
                 {
                     _logger.LogError(ex, "Error reading scraper process output");
                 }
+                finally
+                {
+                    ActiveScraperProcesses.TryRemove(process.Id, out _);
+                    process.Dispose();
+                }
             });
 
             return Ok(new 
@@ -111,14 +120,29 @@ public class ScraperController : ControllerBase
     {
         try
         {
-            // Check if scraper is running
-            var pythonProcesses = Process.GetProcessesByName("python");
-            var isRunning = pythonProcesses.Length > 0;
+            foreach (var processId in ActiveScraperProcesses.Keys)
+            {
+                try
+                {
+                    var trackedProcess = Process.GetProcessById(processId);
+                    if (trackedProcess.HasExited)
+                    {
+                        ActiveScraperProcesses.TryRemove(processId, out _);
+                    }
+                }
+                catch
+                {
+                    ActiveScraperProcesses.TryRemove(processId, out _);
+                }
+            }
+
+            var runningCount = ActiveScraperProcesses.Count;
+            var isRunning = runningCount > 0;
 
             return Ok(new 
             { 
                 status = isRunning ? "running" : "idle",
-                processes = pythonProcesses.Length,
+                processes = runningCount,
                 message = isRunning ? "Scraper is currently running" : "Scraper is idle"
             });
         }

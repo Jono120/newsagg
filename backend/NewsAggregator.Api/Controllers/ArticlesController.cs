@@ -11,11 +11,16 @@ namespace NewsAggregator.Api.Controllers;
 public class ArticlesController : ControllerBase
 {
     private readonly ICosmosDbService _cosmosDbService;
+    private readonly SentimentAnalyzerService _sentimentAnalyzer;
     private readonly ILogger<ArticlesController> _logger;
 
-    public ArticlesController(ICosmosDbService cosmosDbService, ILogger<ArticlesController> logger)
+    public ArticlesController(
+        ICosmosDbService cosmosDbService,
+        SentimentAnalyzerService sentimentAnalyzer,
+        ILogger<ArticlesController> logger)
     {
         _cosmosDbService = cosmosDbService;
+        _sentimentAnalyzer = sentimentAnalyzer;
         _logger = logger;
     }
 
@@ -104,7 +109,10 @@ public class ArticlesController : ControllerBase
             category = a.Category,
             publishedDate = pubNz.ToString("o"),
             scrapedDate = scrapedNz.ToString("o"),
-            content = a.Content
+            content = a.Content,
+            sentimentLabel = a.SentimentLabel,
+            sentimentScore = a.SentimentScore,
+            sentimentConfidence = a.SentimentConfidence
         };
     }
 
@@ -113,6 +121,9 @@ public class ArticlesController : ControllerBase
     {
         try
         {
+            // Apply fallback sentiment analysis
+            ApplySentimentFallback(article);
+
             // Check for duplicate by URL
             var existing = await _cosmosDbService.GetArticleByUrlAsync(article.Url);
             if (existing != null)
@@ -143,6 +154,12 @@ public class ArticlesController : ControllerBase
 
             _logger.LogInformation("Receiving batch of {Count} articles", articles.Count);
 
+            // Apply fallback sentiment analysis to all articles
+            foreach (var article in articles)
+            {
+                ApplySentimentFallback(article);
+            }
+
             var (added, skipped, errors) = await _cosmosDbService.AddArticlesBatchAsync(articles);
 
             var result = new
@@ -170,6 +187,36 @@ public class ArticlesController : ControllerBase
         {
             _logger.LogError(ex, "Error creating articles batch");
             return StatusCode(500, "An error occurred while creating articles");
+        }
+    }
+
+    /// <summary>
+    /// Apply fallback sentiment analysis if sentiment is missing or low-confidence.
+    /// </summary>
+    private void ApplySentimentFallback(Article article)
+    {
+        if (article == null)
+        {
+            return;
+        }
+
+        var currentLabel = article.SentimentLabel ?? "neutral";
+        var currentConfidence = article.SentimentConfidence;
+
+        if (_sentimentAnalyzer.ShouldReanalyze(currentLabel, currentConfidence))
+        {
+            var fallbackResult = _sentimentAnalyzer.AnalyzeTitleSentiment(article.Title);
+            article.SentimentLabel = fallbackResult.Label;
+            article.SentimentScore = fallbackResult.Score;
+            article.SentimentConfidence = fallbackResult.Confidence;
+
+            _logger.LogInformation(
+                "Applied fallback sentiment for article '{Title}' (was: {OldLabel}/{OldConfidence}; now: {NewLabel}/{NewConfidence})",
+                article.Title?.Substring(0, Math.Min(50, article.Title?.Length ?? 0)) ?? "N/A",
+                currentLabel,
+                currentConfidence,
+                fallbackResult.Label,
+                fallbackResult.Confidence);
         }
     }
 

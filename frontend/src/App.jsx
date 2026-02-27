@@ -3,6 +3,7 @@ import axios from "axios";
 import ArticleCard from "./components/ArticleCard";
 import ArticleModal from "./components/ArticleModal";
 import Filters from "./components/Filters";
+import SentimentStats from "./components/SentimentStats";
 import Button from "react-bootstrap/Button";
 import { Pagination } from "antd";
 import Switch from '@mui/material/Switch';
@@ -70,6 +71,7 @@ function App() {
     search: "",
     source: "",
     category: "",
+    sentiment: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
@@ -163,6 +165,12 @@ function App() {
       );
     }
 
+    if (filters.sentiment) {
+      filtered = filtered.filter(
+        (article) => (article.sentimentLabel || "neutral").toLowerCase() === filters.sentiment
+      );
+    }
+
     setFilteredArticles(filtered);
   };
 
@@ -221,10 +229,37 @@ function App() {
       <header>
         <div className="header-top">
           <div className="header-content">
+            <p></p>
             <h1>News Feed</h1>
             <p>Stay updated with the latest news from multiple sources</p>
           </div>
           <div className="header-stats">
+            <MaterialUISwitch
+              checked={isDarkMode}
+              onChange={() => setIsDarkMode(!isDarkMode)}
+              slotProps={{ input: { "aria-label": "dark mode toggle" } }}/>
+              <br/>
+              <br/>
+            <button
+              className="refresh-btn"
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+              title="Get Latest Articles">
+              {refreshing
+                ? "⟳ Scraping..."
+                : loading
+                  ? "⟳ Loading..."
+                  : "⟳ Refresh"}
+            </button>
+            <div className="refresh-message-slot">
+              <div
+                className={`refresh-message ${refreshMessage?.type || "info"} ${refreshMessage ? "visible" : "hidden"}`}>
+                {refreshMessage?.text || "\u00A0"}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="sub-stats">
             {stats && (
               <div className="stats-box">
                 <div className="stat-item">
@@ -238,32 +273,14 @@ function App() {
                   </span>
                   <span className="stat-label">Sources</span>
                 </div>
+                <div className="stat-divider"></div>
+                <SentimentStats
+                  sentimentStats={stats.articlesBySentiment}
+                  sentimentTrends={stats.sentimentTrends}
+                />
               </div>
             )}
-            <button
-              className="refresh-btn"
-              onClick={handleRefresh}
-              disabled={loading || refreshing}
-              title="Get Latest Articles"
-            >
-              {refreshing
-                ? "⟳ Scraping..."
-                : loading
-                ? "⟳ Loading..."
-                : "⟳ Refresh"}
-            </button>
-            {refreshMessage && (
-              <div className={`refresh-message ${refreshMessage.type}`}>
-                {refreshMessage.text}
-              </div>
-            )}
-            <MaterialUISwitch
-              checked={isDarkMode}
-              onChange={() => setIsDarkMode(!isDarkMode)}
-              slotProps={{ input: { 'aria-label': 'dark mode toggle' } }}
-            />
           </div>
-        </div>
       </header>
 
       <div className="container">
@@ -302,7 +319,7 @@ function App() {
               transition="background-color 0.3s ease"
             >
               <Pagination
-              size = "large"
+                size="large"
                 showSizeChanger
                 pageSizeOptions={["12", "24", "36", "48", "60"]}
                 onShowSizeChange={onShowSizeChange}

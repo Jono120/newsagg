@@ -1,0 +1,34 @@
+name: Scraper Container Build & Push
+
+on:
+  push:
+    paths:
+      - 'scraper/**'
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/newsagg/scraper:latest scraper/
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/newsagg/scraper:latest
+
+      - name: (optional) Deploy Container App
+        if: ${{ always() }}
+        run: |
+          az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+          # Example: update image for existing container app
+          az containerapp update -n ${{ secrets.CONTAINERAPP_NAME }} -g ${{ secrets.AZURE_RESOURCE_GROUP }} --image ${{ secrets.ACR_LOGIN_SERVER }}/newsagg/scraper:latest

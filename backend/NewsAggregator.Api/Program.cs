@@ -8,6 +8,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Register sentiment analyzer service
+builder.Services.AddSingleton<SentimentAnalyzerService>();
+
 // Configure Cosmos DB for local emulator by default
 builder.Services.AddSingleton<ICosmosDbService>(sp =>
 {

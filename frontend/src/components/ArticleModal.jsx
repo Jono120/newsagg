@@ -1,13 +1,25 @@
 function ArticleModal({ article, onClose }) {
+  const sentimentLabel = (article.sentimentLabel || 'neutral').toLowerCase()
+
   const formatDate = (dateString) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-NZ', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const formatConfidence = (confidence) => {
+    const value = Number(confidence)
+    if (!Number.isFinite(value)) {
+      return 'N/A'
+    }
+
+    const normalized = value > 1 ? value : value * 100
+    return `${Math.max(0, Math.min(100, normalized)).toFixed(1)}%`
   }
 
   return (
@@ -30,6 +42,13 @@ function ArticleModal({ article, onClose }) {
         >
           Read Full Article →
         </a>
+
+        <div className="modal-sentiment-footer">
+          <span className={`modal-sentiment-label ${sentimentLabel}`}>{sentimentLabel}</span>
+          <span className="modal-sentiment-confidence">
+            Sentiment confidence: {formatConfidence(article.sentimentConfidence)}
+          </span>
+        </div>
       </div>
     </div>
   )
