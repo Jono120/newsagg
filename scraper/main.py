@@ -17,6 +17,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress verbose dependency logs (e.g., per-request HTTP info from HF/httpx)
+for noisy_logger in ("httpx", "httpcore", "huggingface_hub"):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
 # Load environment variables
 load_dotenv()
 

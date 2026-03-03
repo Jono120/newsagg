@@ -75,6 +75,7 @@ function App() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
+  const [showAboutPage, setShowAboutPage] = useState(false);
 
   useEffect(() => {
     fetchArticles();
@@ -190,6 +191,15 @@ function App() {
     setSelectedArticle(null);
   };
 
+  const openAboutPage = () => {
+    setShowAboutPage(true);
+    setSelectedArticle(null);
+  };
+
+  const closeAboutPage = () => {
+    setShowAboutPage(false);
+  };
+
   const sources = [...new Set(articles.map((a) => a.source))];
   const categories = [...new Set(articles.map((a) => a.category))];
 
@@ -284,54 +294,90 @@ function App() {
       </header>
 
       <div className="container">
-        <Filters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          sources={sources}
-          categories={categories}
-        />
-
-        {loading && <div className="loading">Loading articles...</div>}
-
-        {error && <div className="error">{error}</div>}
-
-        {!loading && !error && filteredArticles.length === 0 && (
-          <div className="no-articles">
-            No articles found. Try adjusting your filters.
-          </div>
-        )}
-
-        {!loading && !error && filteredArticles.length > 0 && (
+        {showAboutPage ? (
+          <section className="about-page">
+            <h2>About Us</h2>
+            <p>
+              News Feed is a lightweight aggregation service that collects headlines from multiple trusted Aotearoa New Zealand news sources,
+              enriches them with sentiment insights, and presents them in one place for faster browsing.
+              </p>
+            <p>
+              It was built as a personal project to test a tool that would be helpful for people to quickly scan the news landscape and get a sense of the tone of coverage on various topics.
+              </p>
+            <p>
+              But also it shows some abilities with showing a Positive to Negative ratio of the articles across the environment. 
+              </p>
+            <div className="about-section">
+              <h3>What does this do?</h3>
+              <ul>
+                <li>Aggregates fresh articles from specific news sites in Aotearoa New Zealand.</li>
+                <li>Stores and serves articles in a clean, accessible format.</li>
+                <li>Applies a score for readers to scan whether the article is positive or negative.</li>
+                <li>Supports filtering by source, category if the users are wanting to find specific things.</li>
+              </ul>
+            </div>
+            <div className="about-section">
+              <h3>Who am I?</h3>
+              <ul>
+                <li>I'm Jonathan, a software engineer from Aotearoa New Zealand.</li>
+                <li>Started this as a side project to help myself to read different news articles quickly, focusing specifically on Aotearoa New Zealand news sources.</li>
+                <li></li>
+              </ul>
+            </div>
+            <button className="about-back-btn" onClick={closeAboutPage}>← Back to News</button>
+          </section>
+        ) : (
           <>
-            <div className="articles-grid">
-              {displayedArticles.map((article) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  onClick={() => handleArticleClick(article)}
-                />
-              ))}
-            </div>
-            <br></br>
+            <Filters
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              sources={sources}
+              categories={categories}
+            />
 
-            <div
-              className="pagination d-flex justify-content-center align-items-center gap-3"
-              transition="background-color 0.3s ease"
-            >
-              <Pagination
-                size="large"
-                showSizeChanger
-                pageSizeOptions={["12", "24", "36", "48", "60"]}
-                onShowSizeChange={onShowSizeChange}
-                onChange={(page, size) => {
-                  setCurrentPage(page);
-                  if (size && size !== pageSize) setPageSize(size);
-                }}
-                current={currentPage}
-                pageSize={pageSize}
-                total={filteredArticles.length}
-              />
-            </div>
+            {loading && <div className="loading">Loading articles...</div>}
+
+            {error && <div className="error">{error}</div>}
+
+            {!loading && !error && filteredArticles.length === 0 && (
+              <div className="no-articles">
+                No articles found. Try adjusting your filters.
+              </div>
+            )}
+
+            {!loading && !error && filteredArticles.length > 0 && (
+              <>
+                <div className="articles-grid">
+                  {displayedArticles.map((article) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      onClick={() => handleArticleClick(article)}
+                    />
+                  ))}
+                </div>
+                <br></br>
+
+                <div
+                  className="pagination d-flex justify-content-center align-items-center gap-3"
+                  transition="background-color 0.3s ease"
+                >
+                  <Pagination
+                    size="large"
+                    showSizeChanger
+                    pageSizeOptions={["12", "24", "36", "48", "60"]}
+                    onShowSizeChange={onShowSizeChange}
+                    onChange={(page, size) => {
+                      setCurrentPage(page);
+                      if (size && size !== pageSize) setPageSize(size);
+                    }}
+                    current={currentPage}
+                    pageSize={pageSize}
+                    total={filteredArticles.length}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -339,7 +385,11 @@ function App() {
       <div className="spacer"></div>
 
       <div className="footer d-flex justify-content-center align-items-center">
-        <p align="center">Something is afoot!</p>
+        <p align="center">
+          Something is afoot!
+          <span className="separator">|</span>
+          <button className="footer-link-btn" onClick={openAboutPage}>About Us</button>
+        </p>
       </div>
 
       {selectedArticle && (

@@ -255,6 +255,46 @@ header p {
   min-height: 48px;
 }
 
+.model-settings-panel {
+  margin-top: 0.75rem;
+  text-align: left;
+  background: rgba(255,255,255,0.14);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  max-width: 560px;
+}
+
+.model-settings-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.model-settings-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+
+.model-settings-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 0.35rem;
+}
+
+.model-settings-grid input {
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+.model-settings-grid input:disabled {
+  opacity: 0.75;
+}
+
 .refresh-message {
   display: block;
   padding: 0.75rem 1.5rem;
@@ -639,10 +679,76 @@ header p {
 .footer a:hover {
   text-decoration: underline;
 }
+.footer-link-btn {
+  border: none;
+  background: transparent;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+
+.footer-link-btn:hover {
+  text-decoration: underline;
+}
+
 .footer .separator {
   margin: 0 0.5rem;
   color: white;
   opacity: 0.6;
+}
+
+.about-page {
+  background: white;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.about-page h2 {
+  margin-bottom: 1rem;
+  color: #222;
+}
+
+.about-page p {
+  margin-bottom: 1.25rem;
+  color: #333;
+  line-height: 1.6;
+}
+
+.about-section {
+  margin-bottom: 1.25rem;
+}
+
+.about-section h3 {
+  margin-bottom: 0.5rem;
+  color: #2f2f2f;
+}
+
+.about-section ul {
+  margin: 0;
+  color: #333;
+  padding-left: 1.25rem;
+}
+
+.about-section li {
+  margin-bottom: 0.35rem;
+  line-height: 1.5;
+}
+
+.about-back-btn {
+  margin-top: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: #1a3197;
+  color: white;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.about-back-btn:hover {
+  background: #15297d;
 }
 
 body {
@@ -703,6 +809,23 @@ body.dark .refresh-btn {
 
 body.dark .footer {
   background: linear-gradient(135deg, #0d1736 0%, #5b3766 100%);
+}
+
+body.dark .about-page {
+  background: #0e0e0f;
+  color: #e6e6e6;
+}
+
+body.dark .about-page h2,
+body.dark .about-page p,
+body.dark .about-section h3,
+body.dark .about-section li {
+  color: #e6e6e6;
+}
+
+body.dark .about-back-btn {
+  background: #5b76ff;
+  color: #0f1113;
 }
 
 /* Additional dark-mode tweaks for form controls, badges, pagination and messages */

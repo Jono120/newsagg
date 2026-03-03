@@ -9,6 +9,16 @@ namespace NewsAggregator.Api.Controllers;
 [Route("api/[controller]")]
 public class ScraperController : ControllerBase
 {
+    public sealed class ScraperRefreshOptions
+    {
+        public string? SentimentModel { get; set; }
+        public string? ExtractionModel { get; set; }
+        public double? DocSentimentConfidenceMin { get; set; }
+        public double? WordSentimentConfidenceMin { get; set; }
+        public int? TermSignalMinTotal { get; set; }
+        public int? TermSignalBalanceDelta { get; set; }
+    }
+
     private static readonly ConcurrentDictionary<int, byte> ActiveScraperProcesses = new();
 
     private readonly ILogger<ScraperController> _logger;
@@ -26,7 +36,7 @@ public class ScraperController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshArticles()
+    public async Task<IActionResult> RefreshArticles([FromBody] ScraperRefreshOptions? options)
     {
         try
         {
@@ -69,6 +79,37 @@ public class ScraperController : ControllerBase
                     WorkingDirectory = workingDirectory
                 }
             };
+
+            void SetEnvIfValue(string key, string? value)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    process.StartInfo.Environment[key] = value.Trim();
+                }
+            }
+
+            SetEnvIfValue("HF_SENTIMENT_MODEL", options?.SentimentModel);
+            SetEnvIfValue("HF_EXTRACTION_MODEL", options?.ExtractionModel);
+
+            if (options?.DocSentimentConfidenceMin is double docMin && docMin >= 0 && docMin <= 1)
+            {
+                process.StartInfo.Environment["HF_DOC_SENTIMENT_CONFIDENCE_MIN"] = docMin.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (options?.WordSentimentConfidenceMin is double wordMin && wordMin >= 0 && wordMin <= 1)
+            {
+                process.StartInfo.Environment["HF_WORD_SENTIMENT_CONFIDENCE_MIN"] = wordMin.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (options?.TermSignalMinTotal is int minSignal && minSignal >= 0)
+            {
+                process.StartInfo.Environment["HF_TERM_SIGNAL_MIN_TOTAL"] = minSignal.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (options?.TermSignalBalanceDelta is int balanceDelta && balanceDelta >= 0)
+            {
+                process.StartInfo.Environment["HF_TERM_SIGNAL_BALANCE_DELTA"] = balanceDelta.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
 
             process.Start();
             ActiveScraperProcesses.TryAdd(process.Id, 0);
