@@ -698,6 +698,101 @@ header p {
   opacity: 0.6;
 }
 
+.support-links {
+  --support-btn-height: 44px;
+  --support-btn-min-width: 190px;
+  --support-btn-font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  vertical-align: center;
+}
+
+.kofi-widget {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bmc-widget {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bmc-widget .bmc-btn-container,
+.kofi-widget .btn-container {
+  display: inline-flex;
+  min-width: var(--support-btn-min-width) !important;
+}
+
+
+.bmc-widget .bmc-btn,
+.buy-me-coffee-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: center;
+  min-width: var(--support-btn-min-width) !important;
+  height: var(--support-btn-height) !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  font-size: var(--support-btn-font-size) !important;
+  font-weight: 700;
+  line-height: 1.1 !important;
+  text-decoration: none;
+  border: none;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.kofi-widget .kofitext,
+.bmc-widget .bmc-btn-text {
+  line-height: 1.1 !important;
+  white-space: nowrap;
+}
+
+.bmc-widget .bmc-btn-text {
+  width: auto !important;
+}
+
+.kofi-fallback-link {
+  background: #29abe0;
+  color: #fff;
+}
+
+.buy-me-coffee-link {
+  background: #ffdd00;
+  color: #2e2311;
+}
+
+.kofi-widget .kofi-button:hover,
+.bmc-widget .bmc-btn:hover,
+.kofi-fallback-link:hover,
+.buy-me-coffee-link:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .footer p {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer .separator {
+    display: none;
+  }
+
+  .support-links {
+    --support-btn-min-width: 172px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
 .about-page {
   background: white;
   border-radius: 10px;
@@ -809,6 +904,14 @@ body.dark .refresh-btn {
 
 body.dark .footer {
   background: linear-gradient(135deg, #0d1736 0%, #5b3766 100%);
+}
+
+body.dark .kofi-fallback-link {
+  color: #fff;
+}
+
+body.dark .buy-me-coffee-link {
+  color: #2e2311;
 }
 
 body.dark .about-page {

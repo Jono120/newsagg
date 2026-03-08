@@ -4,7 +4,7 @@ import ArticleCard from "./components/ArticleCard";
 import ArticleModal from "./components/ArticleModal";
 import Filters from "./components/Filters";
 import SentimentStats from "./components/SentimentStats";
-import Button from "react-bootstrap/Button";
+import SupportOptions from "./components/SupportOptions";
 import { Pagination } from "antd";
 import Switch from '@mui/material/Switch';
 import { styled } from '@mui/material/styles';
@@ -234,6 +234,14 @@ function App() {
     } catch (e) {}
   }, [isDarkMode]);
 
+  const kofiId = import.meta.env.VITE_KOFI_ID || "F1F61V9XSE";
+  const buyMeACoffeeUrl =
+    import.meta.env.VITE_BUYMEACOFFEE_URL || "https://buymeacoffee.com/jono420";
+  const buyMeACoffeeSlug =
+    import.meta.env.VITE_BUYMEACOFFEE_SLUG ||
+    buyMeACoffeeUrl.split("/").filter(Boolean).pop() ||
+    "jono420";
+
   return (
     <div className="app">
       <header>
@@ -389,6 +397,11 @@ function App() {
           Something is afoot!
           <span className="separator">|</span>
           <button className="footer-link-btn" onClick={openAboutPage}>About Us</button>
+          <span className="separator">|</span>
+          <SupportOptions
+            kofiId={kofiId}
+            buyMeACoffeeSlug={buyMeACoffeeSlug}
+          />
         </p>
       </div>
 
