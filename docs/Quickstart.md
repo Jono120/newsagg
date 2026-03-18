@@ -110,6 +110,13 @@ py -3 main.py --scheduled
 Environment variables:
 - `SCRAPE_INTERVAL_MINUTES` (default `30`)
 - `SCRAPE_EXTRACT_CONTENT` (`1` to enable, `0` to disable)
+- `HF_GEMMA_MODEL` (default `google/gemma-3-270m`)
+- `HF_ENABLE_GEMMA_SENTIMENT` (`1` to enable Gemma document sentiment inference, `0` to disable)
+- `HF_ENABLE_GEMMA_EXTRACTION` (`1` to enable Gemma key-term extraction, `0` to disable)
+- `HF_SENTIMENT_MODEL` (fallback classification model used when Gemma is unavailable)
+- `HF_EXTRACTION_MODEL` (fallback token-classification model for key terms)
+- `HF_DOC_SENTIMENT_CONFIDENCE_MIN` (default `0.55`; below this, label is neutralized)
+- `HF_WORD_SENTIMENT_CONFIDENCE_MIN` (default `0.65`; minimum confidence for term polarity)
 
 ## Troubleshooting (quick checks)
 - Backend not starting: ensure Cosmos DB emulator is running, and port 5000 is free. Check `backend/NewsAggregator.Api/Properties/launchSettings.json`.

@@ -234,7 +234,7 @@ function App() {
     } catch (e) {}
   }, [isDarkMode]);
 
-  const kofiId = import.meta.env.VITE_KOFI_ID || "F1F61V9XSE";
+  const kofiId = import.meta.env.VITE_KOFI_ID || "jono420";
   const buyMeACoffeeUrl =
     import.meta.env.VITE_BUYMEACOFFEE_URL || "https://buymeacoffee.com/jono420";
   const buyMeACoffeeSlug =
@@ -249,7 +249,7 @@ function App() {
           <div className="header-content">
             <p></p>
             <h1>News Feed</h1>
-            <p>Stay updated with the latest news from multiple sources</p>
+            <p>Stay updated with the latest news from multiple Aoteroa New Zealand news sources</p>
           </div>
           <div className="header-stats">
             <MaterialUISwitch

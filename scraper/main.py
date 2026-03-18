@@ -51,17 +51,6 @@ class ScraperOrchestrator:
                 if articles:
                     total_scraped += len(articles)
 
-                    for art in articles:
-                        sentiment = analyze_text_sentiment_and_terms(
-                            getattr(art, 'title', ''),
-                            getattr(art, 'description', '')
-                        )
-                        art.sentiment_label = sentiment.label
-                        art.sentiment_score = sentiment.score
-                        art.sentiment_confidence = sentiment.confidence
-                        art.positive_words = sentiment.positive_words
-                        art.negative_words = sentiment.negative_words
-
                     # Optionally extract article content before sending
                     extract_flag = os.getenv('SCRAPE_EXTRACT_CONTENT', '1')
                     if extract_flag and extract_flag.lower() not in ('0', 'false', 'no'):
@@ -75,6 +64,20 @@ class ScraperOrchestrator:
                                     art.content = content
                             except Exception:
                                 logger.debug('Content extraction failed for %s', art.url, exc_info=True)
+
+                    # Score sentiment after extraction so each source article uses the richest available context.
+                    for art in articles:
+                        title = getattr(art, 'title', '')
+                        description = getattr(art, 'description', '')
+                        content = getattr(art, 'content', '')
+                        context_text = f"{description} {content[:2000]}".strip()
+
+                        sentiment = analyze_text_sentiment_and_terms(title, context_text)
+                        art.sentiment_label = sentiment.label
+                        art.sentiment_score = sentiment.score
+                        art.sentiment_confidence = sentiment.confidence
+                        art.positive_words = sentiment.positive_words
+                        art.negative_words = sentiment.negative_words
 
                     # Use batch import for efficiency
                     result = self.article_service.create_articles_batch(articles)
