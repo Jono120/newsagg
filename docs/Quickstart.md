@@ -11,22 +11,30 @@ This Quick Start gets the project running locally in five minutes. It covers pre
 - Node.js v18+ (`node --version`)
 - .NET 8 SDK (`dotnet --version`)
 - Python 3.10+ (`python --version`)
-- Azure Cosmos DB Emulator (for local Cosmos DB) or an Azure Cosmos DB account
-
-If you plan to use the emulator on Windows, open the "Azure Cosmos DB Emulator" app and wait until it's fully started.
+- [PocketBase](https://pocketbase.io/docs/) v0.22+ (download the binary for your platform)
 
 ## Quick Local Setup
 
-Open three terminals, copy and paste the following commands (or use the orchestrator in `scripts/start.ps1`). Run one command block in each terminal.
+Open four terminals, copy and paste the following commands (or use the orchestrator in `scripts/start.ps1`). Run one command block in each terminal.
 
-Terminal 1 — Backend API
+Terminal 1 — PocketBase (database)
+```powershell
+# Download pocketbase binary from https://pocketbase.io/docs/ then run:
+./pocketbase serve
+```
+Expected: "Server started at http://127.0.0.1:8090"
+
+Open the admin UI at http://localhost:8090/_/ and create the `articles` collection.
+See [PocketBase Collection Setup](#pocketbase-collection-setup) below for the required schema.
+
+Terminal 2 — Backend API
 ```powershell
 cd backend/NewsAggregator.Api
 dotnet run
 ```
 Expected: "Now listening on: http://localhost:5000" - default backend URL
 
-Terminal 2 — Frontend
+Terminal 3 — Frontend
 ```powershell
 cd frontend
 npm install
@@ -34,7 +42,7 @@ npm run dev
 ```
 Expected: local dev URL (e.g. `http://localhost:3000`) - default frontend URL
 
-Terminal 3 — Scraper (one-shot)
+Terminal 4 — Scraper (one-shot)
 ```powershell
 cd scraper
 python -m venv venv
@@ -64,25 +72,60 @@ Logs are written to `logs/`. If there are any issues, they will be added to the 
 
 Swagger UI: `http://localhost:5000/swagger`
 
-## Cosmos DB notes
-- Container: `Articles`
-- Partition key: `/source` (keeps queries by source efficient)
+## PocketBase Collection Setup
 
-Example document:
+PocketBase is a self-hosted backend with a built-in SQLite database. Before starting the application you must create the `articles` collection via the admin UI at `http://localhost:8090/_/`.
+
+### Collection name: `articles`
+
+Create a collection of type **Base** named `articles` with the following fields:
+
+| Field name           | Type   | Options                  |
+|----------------------|--------|--------------------------|
+| `title`              | Text   | Required                 |
+| `description`        | Text   | —                        |
+| `url`                | Text   | Required, Unique         |
+| `source`             | Text   | Required                 |
+| `category`           | Text   | —                        |
+| `publishedDate`      | Date   | Required                 |
+| `scrapedDate`        | Date   | —                        |
+| `content`            | Text   | (large text)             |
+| `sentimentLabel`     | Text   | —                        |
+| `sentimentScore`     | Number | —                        |
+| `sentimentConfidence`| Number | —                        |
+| `positiveWords`      | JSON   | —                        |
+| `negativeWords`      | JSON   | —                        |
+
+Under **API Rules** for the collection, set **Create**, **Update**, **Delete**, and **List/Search** rules to empty string (allow all) for local development.
+
+Example article record stored in PocketBase:
 ```json
 {
-  "id": "<guid>",
+  "id": "abc123def456xyz",
   "title": "...",
   "description": "...",
   "url": "https://...",
   "source": "Example News",
   "category": "World",
-  "publishedDate": "2026-01-09T12:00:00Z",
-  "scrapedDate": "2026-01-09T12:05:00Z"
+  "publishedDate": "2026-01-09 12:00:00.000Z",
+  "scrapedDate": "2026-01-09 12:05:00.000Z",
+  "sentimentLabel": "neutral",
+  "sentimentScore": 0.0,
+  "sentimentConfidence": 0.0,
+  "positiveWords": [],
+  "negativeWords": []
 }
 ```
 
-If using the Cosmos DB Emulator, the endpoint is typically `https://localhost:8081`.
+PocketBase configuration in `appsettings.json`:
+```json
+{
+  "PocketBase": {
+    "BaseUrl": "http://localhost:8090",
+    "CollectionName": "articles"
+  }
+}
+```
 
 ## Scraper: add a new source
 1. Add a new class in `scraper/scrapers/` inheriting `BaseScraper`.
@@ -119,7 +162,7 @@ Environment variables:
 - `HF_WORD_SENTIMENT_CONFIDENCE_MIN` (default `0.65`; minimum confidence for term polarity)
 
 ## Troubleshooting (quick checks)
-- Backend not starting: ensure Cosmos DB emulator is running, and port 5000 is free. Check `backend/NewsAggregator.Api/Properties/launchSettings.json`.
+- Backend not starting: ensure PocketBase is running at `http://localhost:8090` and the `articles` collection exists. Check port 5000 is free.
 - Frontend can't reach backend: confirm backend URL and CORS in `Program.cs`, verify `vite.config.js` proxy.
 - Scraper failing: ensure `.env` contains `API_BASE_URL`, virtualenv is active, and backend is reachable.
 - No articles: run the scraper and inspect `logs/` and `refresh_response.json`.
@@ -146,13 +189,13 @@ Invoke-WebRequest -Uri "http://localhost:5000/api/articles" -Method POST -Body $
 
 ## Common issues
 - Port conflicts: change backend port in `backend/NewsAggregator.Api/Properties/launchSettings.json` or frontend port in `frontend/vite.config.js`.
-- Cosmos DB connection: verify the emulator or connection string and endpoint (`https://localhost:8081`).
+- PocketBase not running: download from https://pocketbase.io/docs/ and run `./pocketbase serve`.
 - Missing Python packages: activate venv and run `pip install -r requirements.txt`.
 
 ## Next steps
 - Add scrapers in `scraper/scrapers/`.
 - Customize UI in `frontend/src/components/`.
-- Deploy: consider Azure Static Web Apps + Azure Functions and an Azure Cosmos DB account.
+- Deploy: run PocketBase as a persistent service alongside the .NET API.
 
 ## Where to get help
 - Architecture and deeper docs: [README.md](../README.md)

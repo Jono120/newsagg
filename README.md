@@ -1,6 +1,6 @@
 # :new_zealand: News Aggregator - This is f*%*ng the News (P Gower)
 
-A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Zealand news sources, stores them in Azure Cosmos DB (database), and displays them in a modern React interface.
+A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Zealand news sources, stores them in PocketBase (SQLite), and displays them in a modern React interface.
 
 ## :rocket: Quick Start
 
@@ -14,7 +14,7 @@ See the [quickstart guide](./docs/QUICKSTART.md) for full setup and installation
 - :symbols: **Template System** for adding new sources quickly
 - :bullettrain_front: **React Frontend** with modern UI
 - :notebook_with_decorative_cover: **ASP.NET Core Backend** with REST API
-- :space_invader: **Azure Cosmos DB** for scalable storage
+- :floppy_disk: **PocketBase** for lightweight self-hosted storage (SQLite)
 
 ## :newspaper: News Sources
 
@@ -30,7 +30,7 @@ See the [quickstart guide](./docs/QUICKSTART.md) for full setup and installation
 - **Frontend**: React + Vite
 - **Backend**: ASP.NET Core 8 Web API
 - **Scraper**: Python 3.10+ with BeautifulSoup & feedparser
-- **Database**: Azure Cosmos DB (with local Emulator for dev)
+- **Database**: [PocketBase](https://pocketbase.io/) (self-hosted SQLite backend)
 
 ## :file_folder: Project Structure
 

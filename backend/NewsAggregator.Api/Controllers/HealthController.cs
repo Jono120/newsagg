@@ -7,12 +7,12 @@ namespace NewsAggregator.Api.Controllers;
 [Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
-    private readonly ICosmosDbService _cosmosDbService;
+    private readonly IArticleService _articleService;
     private readonly ILogger<HealthController> _logger;
 
-    public HealthController(ICosmosDbService cosmosDbService, ILogger<HealthController> logger)
+    public HealthController(IArticleService articleService, ILogger<HealthController> logger)
     {
-        _cosmosDbService = cosmosDbService;
+        _articleService = articleService;
         _logger = logger;
     }
 
@@ -22,7 +22,7 @@ public class HealthController : ControllerBase
         try
         {
             // Test database connectivity
-            var totalCount = await _cosmosDbService.GetTotalArticleCountAsync();
+            var totalCount = await _articleService.GetTotalArticleCountAsync();
             
             var health = new
             {

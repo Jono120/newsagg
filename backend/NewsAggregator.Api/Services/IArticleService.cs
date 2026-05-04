@@ -2,7 +2,7 @@ using NewsAggregator.Api.Models;
 
 namespace NewsAggregator.Api.Services;
 
-public interface ICosmosDbService
+public interface IArticleService
 {
     Task InitializeAsync();
     Task<IEnumerable<Article>> GetArticlesAsync();

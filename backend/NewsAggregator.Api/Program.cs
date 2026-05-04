@@ -8,17 +8,23 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure Cosmos DB for local emulator by default
-builder.Services.AddSingleton<ICosmosDbService>(sp =>
+// Register the named HttpClient for PocketBase with the configured base URL
+var pocketBaseUrl = (builder.Configuration["PocketBase:BaseUrl"] ?? "http://localhost:8090").TrimEnd('/') + "/";
+builder.Services.AddHttpClient("pocketbase", client =>
+{
+    client.BaseAddress = new Uri(pocketBaseUrl);
+});
+
+// Configure PocketBase as the article storage backend
+builder.Services.AddSingleton<IArticleService>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
+    var logger = sp.GetRequiredService<ILogger<PocketBaseService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
 
-    var endpoint = configuration["CosmosDb:Endpoint"] ?? "https://localhost:8081";
-    var key = configuration["CosmosDb:Key"] ?? "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-    var databaseName = configuration["CosmosDb:DatabaseName"] ?? "NewsAggregatorDb";
-    var containerName = configuration["CosmosDb:ContainerName"] ?? "Articles";
+    var collectionName = configuration["PocketBase:CollectionName"] ?? "articles";
 
-    return new CosmosDbService(endpoint, key, databaseName, containerName);
+    return new PocketBaseService(collectionName, httpClientFactory, logger);
 });
 
 // Configure CORS for local development
@@ -46,8 +52,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Initialize Cosmos DB
-var cosmosDbService = app.Services.GetRequiredService<ICosmosDbService>();
-await cosmosDbService.InitializeAsync();
+// Initialize the article service (no-op for PocketBase; logs startup confirmation)
+var articleService = app.Services.GetRequiredService<IArticleService>();
+await articleService.InitializeAsync();
 
 app.Run();

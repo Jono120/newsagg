@@ -7,12 +7,12 @@ namespace NewsAggregator.Api.Controllers;
 [Route("api/[controller]")]
 public class StatisticsController : ControllerBase
 {
-    private readonly ICosmosDbService _cosmosDbService;
+    private readonly IArticleService _articleService;
     private readonly ILogger<StatisticsController> _logger;
 
-    public StatisticsController(ICosmosDbService cosmosDbService, ILogger<StatisticsController> logger)
+    public StatisticsController(IArticleService articleService, ILogger<StatisticsController> logger)
     {
-        _cosmosDbService = cosmosDbService;
+        _articleService = articleService;
         _logger = logger;
     }
 
@@ -21,9 +21,9 @@ public class StatisticsController : ControllerBase
     {
         try
         {
-            var totalCount = await _cosmosDbService.GetTotalArticleCountAsync();
-            var countsBySource = await _cosmosDbService.GetArticleCountsBySourceAsync();
-            var countsBySentiment = await _cosmosDbService.GetArticleCountsBySentimentAsync();
+            var totalCount = await _articleService.GetTotalArticleCountAsync();
+            var countsBySource = await _articleService.GetArticleCountsBySourceAsync();
+            var countsBySentiment = await _articleService.GetArticleCountsBySentimentAsync();
             var sentimentTrends = await BuildSentimentTrendsAsync();
 
             var statistics = new
@@ -50,7 +50,7 @@ public class StatisticsController : ControllerBase
     {
         try
         {
-            var countsBySource = await _cosmosDbService.GetArticleCountsBySourceAsync();
+            var countsBySource = await _articleService.GetArticleCountsBySourceAsync();
             
             var sources = countsBySource.Select(kvp => new
             {
@@ -72,7 +72,7 @@ public class StatisticsController : ControllerBase
         var now = DateTimeOffset.UtcNow;
         var start14Days = now.AddDays(-13).Date;
         var start7Days = now.AddDays(-6).Date;
-        var recentArticles = await _cosmosDbService.GetArticlesSinceAsync(start14Days);
+        var recentArticles = await _articleService.GetArticlesSinceAsync(start14Days);
 
         var last24Start = now.AddHours(-23);
         var hourlyBuckets = BuildBuckets(24);
