@@ -10,14 +10,14 @@ namespace NewsAggregator.Api.Controllers;
 [Route("api/[controller]")]
 public class ArticlesController : ControllerBase
 {
-    private readonly ICosmosDbService _cosmosDbService;
+    private readonly IArticleService _articleService;
     private readonly ILogger<ArticlesController> _logger;
 
     public ArticlesController(
-        ICosmosDbService cosmosDbService,
+        IArticleService articleService,
         ILogger<ArticlesController> logger)
     {
-        _cosmosDbService = cosmosDbService;
+        _articleService = articleService;
         _logger = logger;
     }
 
@@ -33,15 +33,15 @@ public class ArticlesController : ControllerBase
 
             if (!string.IsNullOrEmpty(source))
             {
-                articles = await _cosmosDbService.GetArticlesBySourceAsync(source);
+                articles = await _articleService.GetArticlesBySourceAsync(source);
             }
             else if (!string.IsNullOrEmpty(category))
             {
-                articles = await _cosmosDbService.GetArticlesByCategoryAsync(category);
+                articles = await _articleService.GetArticlesByCategoryAsync(category);
             }
             else
             {
-                articles = await _cosmosDbService.GetArticlesAsync();
+                articles = await _articleService.GetArticlesAsync();
             }
 
             if (!string.IsNullOrEmpty(tz) && tz.Equals("nz", StringComparison.OrdinalIgnoreCase))
@@ -64,7 +64,7 @@ public class ArticlesController : ControllerBase
     {
         try
         {
-            var article = await _cosmosDbService.GetArticleAsync(id);
+            var article = await _articleService.GetArticleAsync(id);
             
             if (article == null)
             {
@@ -121,14 +121,14 @@ public class ArticlesController : ControllerBase
         try
         {
             // Check for duplicate by URL
-            var existing = await _cosmosDbService.GetArticleByUrlAsync(article.Url);
+            var existing = await _articleService.GetArticleByUrlAsync(article.Url);
             if (existing != null)
             {
                 _logger.LogInformation("Article already exists: {Url}", article.Url);
                 return Conflict(new { message = "Article with this URL already exists", existingId = existing.Id });
             }
 
-            var createdArticle = await _cosmosDbService.AddArticleAsync(article);
+            var createdArticle = await _articleService.AddArticleAsync(article);
             return CreatedAtAction(nameof(GetArticle), new { id = createdArticle.Id }, createdArticle);
         }
         catch (Exception ex)
@@ -150,7 +150,7 @@ public class ArticlesController : ControllerBase
 
             _logger.LogInformation("Receiving batch of {Count} articles", articles.Count);
 
-            var (added, skipped, errors) = await _cosmosDbService.AddArticlesBatchAsync(articles);
+            var (added, skipped, errors) = await _articleService.AddArticlesBatchAsync(articles);
 
             var result = new
             {
@@ -185,7 +185,7 @@ public class ArticlesController : ControllerBase
     {
         try
         {
-            var existingArticle = await _cosmosDbService.GetArticleAsync(id);
+            var existingArticle = await _articleService.GetArticleAsync(id);
             
             if (existingArticle == null)
             {
@@ -193,7 +193,7 @@ public class ArticlesController : ControllerBase
             }
 
             article.Id = id;
-            await _cosmosDbService.UpdateArticleAsync(id, article);
+            await _articleService.UpdateArticleAsync(id, article);
             
             return NoContent();
         }
@@ -209,14 +209,14 @@ public class ArticlesController : ControllerBase
     {
         try
         {
-            var existingArticle = await _cosmosDbService.GetArticleAsync(id);
+            var existingArticle = await _articleService.GetArticleAsync(id);
             
             if (existingArticle == null)
             {
                 return NotFound();
             }
 
-            await _cosmosDbService.DeleteArticleAsync(id);
+            await _articleService.DeleteArticleAsync(id);
             
             return NoContent();
         }
