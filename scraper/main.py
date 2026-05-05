@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import schedule
 from dotenv import load_dotenv
@@ -24,6 +25,49 @@ for noisy_logger in ("httpx", "httpcore", "huggingface_hub"):
 # Load environment variables
 load_dotenv()
 
+def _enrich_article(article, extract_flag):
+    """
+    Enrich a single article with content extraction and sentiment analysis.
+    This function is designed to run in parallel via ThreadPoolExecutor.
+    
+    Args:
+        article: Article object to enrich
+        extract_flag: Whether to extract content from the article URL
+    
+    Returns:
+        tuple: (article, error_msg or None)
+    """
+    try:
+        # Content extraction (if enabled)
+        if extract_flag and not getattr(article, 'content', None):
+            try:
+                content = extract_content(article.url, timeout=10)
+                if content:
+                    article.content = content
+            except Exception as e:
+                logger.debug('Content extraction failed for %s: %s', article.url, str(e))
+        
+        # Sentiment analysis
+        title = getattr(article, 'title', '')
+        description = getattr(article, 'description', '')
+        content = getattr(article, 'content', '')
+        context_text = f"{description} {content[:2000]}".strip()
+        
+        try:
+            sentiment = analyze_text_sentiment_and_terms(title, context_text)
+            article.sentiment_label = sentiment.label
+            article.sentiment_score = sentiment.score
+            article.sentiment_confidence = sentiment.confidence
+            article.positive_words = sentiment.positive_words
+            article.negative_words = sentiment.negative_words
+        except Exception as e:
+            logger.debug('Sentiment analysis failed for %s: %s', article.url, str(e))
+        
+        return (article, None)
+    except Exception as e:
+        logger.warning('Error enriching article %s: %s', getattr(article, 'url', 'unknown'), str(e))
+        return (article, str(e))
+
 class ScraperOrchestrator:
     def __init__(self):
         self.article_service = ArticleService(
@@ -31,9 +75,23 @@ class ScraperOrchestrator:
             articles_endpoint=os.getenv('API_ARTICLES_ENDPOINT', '/api/articles')
         )
         
+        # Validate backend connectivity early
+        try:
+            import requests
+            health_url = f"{self.article_service.base_url}/api/health"
+            response = requests.get(health_url, timeout=5)
+            if response.status_code == 200:
+                logger.info(f"Backend health check passed: {health_url}")
+            else:
+                logger.warning(f"Backend health check returned {response.status_code}; proceeding anyway")
+        except Exception as e:
+            logger.warning(f"Could not verify backend at {self.article_service.base_url}: {e}. Proceeding with scraping.")
+        
         # Auto-load all registered scrapers
         self.scrapers = get_all_scrapers()
         logger.info(f"Loaded {len(self.scrapers)} scrapers: {', '.join(s.source for s in self.scrapers)}")
+        logger.info(f"Backend API: {self.article_service.articles_url}")
+
     
     def scrape_all(self):
         """Run all scrapers and send articles to the API"""
@@ -51,41 +109,39 @@ class ScraperOrchestrator:
                 if articles:
                     total_scraped += len(articles)
 
-                    # Optionally extract article content before sending
+                    # Enrich articles in parallel (content extraction + sentiment analysis)
                     extract_flag = os.getenv('SCRAPE_EXTRACT_CONTENT', '1')
-                    if extract_flag and extract_flag.lower() not in ('0', 'false', 'no'):
-                        for art in articles:
+                    extract_enabled = extract_flag and extract_flag.lower() not in ('0', 'false', 'no')
+                    
+                    enrichment_start = time.time()
+                    enriched_articles = []
+                    
+                    # Use ThreadPoolExecutor for parallel enrichment (max 4 workers to avoid rate limiting)
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        futures = [
+                            executor.submit(_enrich_article, art, extract_enabled)
+                            for art in articles
+                        ]
+                        
+                        for future in as_completed(futures):
                             try:
-                                # Only attempt extraction if content not already present
-                                if getattr(art, 'content', None):
-                                    continue
-                                content = extract_content(art.url, timeout=10)
-                                if content:
-                                    art.content = content
-                            except Exception:
-                                logger.debug('Content extraction failed for %s', art.url, exc_info=True)
-
-                    # Score sentiment after extraction so each source article uses the richest available context.
-                    for art in articles:
-                        title = getattr(art, 'title', '')
-                        description = getattr(art, 'description', '')
-                        content = getattr(art, 'content', '')
-                        context_text = f"{description} {content[:2000]}".strip()
-
-                        sentiment = analyze_text_sentiment_and_terms(title, context_text)
-                        art.sentiment_label = sentiment.label
-                        art.sentiment_score = sentiment.score
-                        art.sentiment_confidence = sentiment.confidence
-                        art.positive_words = sentiment.positive_words
-                        art.negative_words = sentiment.negative_words
+                                enriched_art, error = future.result(timeout=30)
+                                enriched_articles.append(enriched_art)
+                                if error:
+                                    logger.debug('Article enrichment had minor error: %s', error)
+                            except Exception as e:
+                                logger.warning('Enrichment future failed: %s', str(e))
+                    
+                    enrichment_time = time.time() - enrichment_start
+                    logger.info("Enriched %d articles in %.2f seconds", len(enriched_articles), enrichment_time)
 
                     # Use batch import for efficiency
-                    result = self.article_service.create_articles_batch(articles)
+                    result = self.article_service.create_articles_batch(enriched_articles)
                     total_added += result.get('added', 0)
                     total_skipped += result.get('skipped', 0)
                     
                     logger.info("Scraped %d articles from %s: %d added, %d skipped", 
-                               len(articles), scraper.source, 
+                               len(enriched_articles), scraper.source, 
                                result.get('added', 0), result.get('skipped', 0))
                     
                     errors = result.get('errors') or []

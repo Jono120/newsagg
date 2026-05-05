@@ -11,6 +11,15 @@ public class ScraperController : ControllerBase
 {
     public sealed class ScraperRefreshOptions
     {
+        /// <summary>Fast refresh mode: skip content extraction and sentiment analysis</summary>
+        public bool? FastMode { get; set; }
+        
+        /// <summary>Enable/disable content extraction from article URLs</summary>
+        public bool? ExtractContent { get; set; }
+        
+        /// <summary>Enable/disable Gemma sentiment inference</summary>
+        public bool? EnableGemmaSentiment { get; set; }
+        
         public string? SentimentModel { get; set; }
         public string? ExtractionModel { get; set; }
         public double? DocSentimentConfidenceMin { get; set; }
@@ -85,6 +94,27 @@ public class ScraperController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(value))
                 {
                     process.StartInfo.Environment[key] = value.Trim();
+                }
+            }
+
+            // Handle fast-refresh mode: disable enrichment
+            if (options?.FastMode == true)
+            {
+                process.StartInfo.Environment["SCRAPE_EXTRACT_CONTENT"] = "0";
+                process.StartInfo.Environment["HF_ENABLE_GEMMA_SENTIMENT"] = "0";
+                _logger.LogInformation("Fast refresh mode enabled: skipping content extraction and sentiment analysis");
+            }
+            else
+            {
+                // Individual control over enrichment options
+                if (options?.ExtractContent is bool extractContent)
+                {
+                    process.StartInfo.Environment["SCRAPE_EXTRACT_CONTENT"] = extractContent ? "1" : "0";
+                }
+
+                if (options?.EnableGemmaSentiment is bool enableGemma)
+                {
+                    process.StartInfo.Environment["HF_ENABLE_GEMMA_SENTIMENT"] = enableGemma ? "1" : "0";
                 }
             }
 

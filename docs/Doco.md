@@ -41,3 +41,22 @@ A clean overview of all project documentation.
 | README | Overview & architecture | 5 min |
 | News Sources | Add new sources | 10 min |
 | APIDoc| Backend API reference | 5 min |
+
+---
+
+## :test_tube: Testing
+
+### Integration Tests
+- **Scraper Connectivity Tests** - Validates live connectivity to all news sources (Stuff NZ, RNZ, 1News NZ, NZ Herald)
+  - Confirms each scraper successfully returns articles
+  - Verifies article parsing (title, URL, description extraction)
+  - Tests timeout handling and error resilience
+
+### Date/Timezone Tests
+- **New Zealand Timezone Verification** - Ensures all scraped and published dates are correctly formatted in NZ timezone (+12:00)
+  - Validates `publishedDate` and `scrapedDate` fields in ISO 8601 format with timezone offset
+  - Confirms backend will parse `DateTimeOffset` strings correctly
+
+### Test Files
+- `scraper/services/tests/test_sentiment_analyzer.py` - Unit tests for sentiment analysis module
+

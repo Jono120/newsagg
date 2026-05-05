@@ -119,7 +119,13 @@ public class PocketBaseService : IArticleService
 
         using var client = CreateClient();
         var response = await client.PostAsJsonAsync(CollectionEndpoint, payload, _jsonOptions);
-        response.EnsureSuccessStatusCode();
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("PocketBase API error {Status}: {Content}", response.StatusCode, errorContent);
+            response.EnsureSuccessStatusCode(); // Throw with details
+        }
 
         var created = await response.Content.ReadFromJsonAsync<PocketBaseArticleRecord>(_jsonOptions);
         if (created == null) throw new InvalidOperationException("Failed to deserialize the created article response from PocketBase.");
@@ -333,6 +339,9 @@ public class PocketBaseService : IArticleService
         url = article.Url,
         source = article.Source,
         category = article.Category,
+        // Convert to UTC format as expected by PocketBase
+        // Input DateTimeOffset includes timezone info (e.g., +12:00 for NZST)
+        // UtcDateTime converts to equivalent UTC time
         publishedDate = article.PublishedDate.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fffZ"),
         scrapedDate = article.ScrapedDate.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fffZ"),
         content = article.Content,

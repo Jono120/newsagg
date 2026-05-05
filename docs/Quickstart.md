@@ -48,12 +48,12 @@ cd scraper
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env
+# Copy and configure the environment (already done in root .env, but scraper uses root .env)
 python main.py
 ```
-The scraper posts articles to the backend API. For continuous scraping, run with `--scheduled` (see below).
+The scraper posts articles to the backend API. Configuration is read from the root `.env` file.
 
-Visit the frontend at: `http://localhost:3000`
+Expected: "Loaded 4 scrapers" and successful API connection to `http://localhost:5000/api/articles`
 
 ## TL;DR single-command orchestrator
 From the command line you can run the bundled PowerShell orchestrator to start backend, frontend and scraper together:
@@ -161,11 +161,40 @@ Environment variables:
 - `HF_DOC_SENTIMENT_CONFIDENCE_MIN` (default `0.55`; below this, label is neutralized)
 - `HF_WORD_SENTIMENT_CONFIDENCE_MIN` (default `0.65`; minimum confidence for term polarity)
 
+## Performance Tuning
+
+### Fast Refresh Mode (Frontend)
+For faster scraping refreshes without content extraction or sentiment analysis:
+```powershell
+# POST to http://localhost:5000/api/scraper/refresh with:
+{
+  "fastMode": true
+}
+```
+This skips all enrichment work and just fetches raw articles from sources (2-5x faster).
+
+### Incremental Enrichment
+Control individual enrichment options via the API:
+```powershell
+{
+  "extractContent": false,     # Skip HTML content extraction
+  "enableGemmaSentiment": false # Skip sentiment analysis
+}
+```
+
+### Optimizations Applied
+- **Parallel enrichment**: Content extraction and sentiment analysis now run on 4 concurrent workers (down from sequential)
+- **2-model limit**: Sentiment analysis calls at most 2 HF models (Gemma + keyphrase extraction), eliminating redundant cascades
+- **Selective extraction**: Use `HF_ENABLE_GEMMA_EXTRACTION=0` to extract key terms only when needed
+
 ## Troubleshooting (quick checks)
 - Backend not starting: ensure PocketBase is running at `http://localhost:8090` and the `articles` collection exists. Check port 5000 is free.
 - Frontend can't reach backend: confirm backend URL and CORS in `Program.cs`, verify `vite.config.js` proxy.
-- Scraper failing: ensure `.env` contains `API_BASE_URL`, virtualenv is active, and backend is reachable.
-- No articles: run the scraper and inspect `logs/` and `refresh_response.json`.
+- **Scraper can't find backend**: Verify `.env` file has `API_BASE_URL=http://localhost:5000` (not `http://backend:8080`). The backend URL must match where the API is actually running.
+  - Local dev: `http://localhost:5000`
+  - Docker deployment: `http://backend:8080`
+- Scraper failing: ensure `.env` contains `API_BASE_URL`, virtualenv is active, and backend is reachable at that URL.
+- No articles: run the scraper and inspect `logs/` and `refresh_response.json`. Check backend logs for API errors.
 
 ## Testing the API (PowerShell)
 Get all articles:

@@ -39,9 +39,9 @@ class Article:
     def to_dict(self):
         """Convert article to dictionary for API submission.
 
-        Ensures `publishedDate` is an ISO-8601 string in New Zealand local time
-        (Pacific/Auckland) including the offset, so the backend receives
-        timezone-aware timestamps.
+        Ensures `publishedDate` and `scrapedDate` are in New Zealand timezone
+        with proper offset (+12:00 or +13:00 depending on DST), formatted as
+        ISO 8601 strings that PocketBase/backend can parse as DateTimeOffset.
         """
         pacific = tz.gettz("Pacific/Auckland")
 
@@ -56,17 +56,22 @@ class Article:
                 dt = None
 
         if dt is None:
-            # fallback to current UTC
-            dt = datetime.now(tz.UTC)
+            # fallback to current time in NZ
+            dt = datetime.now(pacific)
+        else:
+            # If naive, assume UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz.UTC)
+            # Convert to NZ timezone (handles DST automatically)
+            dt = dt.astimezone(pacific)
 
-        # If naive, assume UTC
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=tz.UTC)
+        # Format as ISO 8601 with NZ offset (e.g., "2026-05-06T14:30:00+12:00")
+        # This preserves timezone info and is parseable by DateTimeOffset.Parse()
+        pub_date = dt.isoformat()
 
-        # Convert to NZ local time (handles DST)
-        nz_dt = dt.astimezone(pacific)
-
-        pub_date = nz_dt.isoformat()
+        # ScrapedDate is always "now" in NZ timezone
+        scraped_dt = datetime.now(pacific)
+        scraped_date = scraped_dt.isoformat()
 
         return {
             "title": self.title,
@@ -75,6 +80,7 @@ class Article:
             "source": self.source,
             "category": self.category,
             "publishedDate": pub_date,
+            "scrapedDate": scraped_date,
             "content": self.content,
             "sentimentLabel": self.sentiment_label,
             "sentimentScore": self.sentiment_score,

@@ -101,6 +101,21 @@ class ArticleService:
                     batch_url, response.status_code, _truncate(response.text)
                 )
                 logger.debug("Batch payload sample (truncated): %s", _truncate(articles_data, 2000))
+                # Try to extract validation errors from response
+                error_details = response.text
+                try:
+                    error_json = response.json()
+                    if isinstance(error_json, dict):
+                        # Check for PocketBase error format
+                        if 'message' in error_json:
+                            error_details = error_json['message']
+                        elif 'errors' in error_json:
+                            error_details = str(error_json['errors'])
+                        elif 'error' in error_json:
+                            error_details = error_json['error']
+                except:
+                    pass
+                logger.error("Batch error details: %s", _truncate(error_details, 500))
                 return {'added': 0, 'skipped': 0, 'errors': [_truncate(response.text)]}
                 
         except requests.exceptions.RequestException:
