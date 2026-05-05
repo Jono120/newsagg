@@ -1,9 +1,9 @@
 # News Aggregator API Documentation
 
 ## Overview
-The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 8.0 and Azure Cosmos DB.
+The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 8.0 and PocketBase.
 
-It connects with a python script that will connect and pull in the latest items from a news site. It'll then upload a link and basic information of this to the Cosmos DB table.
+It connects with a python script that will connect and pull in the latest items from a news site. It'll then upload a link and basic information to the PocketBase database.
 
 ## Base Development URL
 ```
@@ -447,7 +447,7 @@ Logs are written under `logs/` in the repository root. Use these when diagnosing
 ### Notes on behavior
 - The scraper posts batches to `/api/articles/batch`; the API performs duplicate detection and returns an object with `added`, `skipped`, and `errors` fields.
 - When running the orchestrator the backend will log scraper stdout/stderr; scraper logs are also captured under `logs/scraper.*` for easier debugging.
-- Production: Configure based on Cosmos DB throughput (RU/s)
+- Production: Ensure PocketBase instance is accessible and database permissions are properly configured
 
 ---
 
@@ -470,11 +470,9 @@ Features:
 ### appsettings.json
 ```json
 {
-  "CosmosDb": {
-    "Endpoint": "https://localhost:8081",
-    "Key": "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
-    "DatabaseName": "NewsAggregatorDb",
-    "ContainerName": "Articles"
+  "PocketBase": {
+    "BaseUrl": "http://localhost:8090",
+    "CollectionName": "articles"
   }
 }
 ```

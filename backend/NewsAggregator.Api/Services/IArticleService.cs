@@ -13,7 +13,7 @@ public interface IArticleService
     Task<IEnumerable<Article>> GetArticlesBySourceAsync(string source);
     Task<IEnumerable<Article>> GetArticlesByCategoryAsync(string category);
     Task<Article?> GetArticleByUrlAsync(string url);
-    Task<(int added, int skipped, List<string> errors)> AddArticlesBatchAsync(IEnumerable<Article> articles);
+    Task<(int added, int skipped, int updated, List<string> errors)> AddArticlesBatchAsync(IEnumerable<Article> articles);
     Task<Dictionary<string, int>> GetArticleCountsBySourceAsync();
     Task<Dictionary<string, int>> GetArticleCountsBySentimentAsync();
     Task<IEnumerable<Article>> GetArticlesSinceAsync(DateTimeOffset since);

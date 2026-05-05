@@ -13,13 +13,36 @@ public class PocketBaseService : IArticleService
     private readonly string _collectionName;
     private readonly ILogger<PocketBaseService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly string? _apiKeyHeader;
+    private readonly string? _apiKeyValue;
 
-    public PocketBaseService(string collectionName, IHttpClientFactory httpClientFactory, ILogger<PocketBaseService> logger)
+    public PocketBaseService(string collectionName, IHttpClientFactory httpClientFactory, ILogger<PocketBaseService> logger, Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _collectionName = collectionName;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Optional API key header to use for server-to-server calls to PocketBase
+        // Configure via configuration keys: PocketBase:ApiKeyHeader (default: X-API-Key) and PocketBase:ApiKey
+        _apiKeyHeader = configuration["PocketBase:ApiKeyHeader"] ?? configuration["PocketBase:ApiKeyHeaderName"] ?? "X-API-Key";
+        _apiKeyValue = configuration["PocketBase:ApiKey"];
+        if (!string.IsNullOrEmpty(_apiKeyValue))
+        {
+            _logger.LogInformation("PocketBase API key header configured: {Header}", _apiKeyHeader);
+        }
+    }
+
+    private HttpClient CreateClient()
+    {
+        var client = _httpClientFactory.CreateClient("pocketbase");
+        if (!string.IsNullOrEmpty(_apiKeyValue) && !string.IsNullOrEmpty(_apiKeyHeader))
+        {
+            if (client.DefaultRequestHeaders.Contains(_apiKeyHeader))
+                client.DefaultRequestHeaders.Remove(_apiKeyHeader);
+            client.DefaultRequestHeaders.Add(_apiKeyHeader, _apiKeyValue);
+        }
+        return client;
     }
 
     private string CollectionEndpoint => $"api/collections/{_collectionName}/records";
@@ -39,7 +62,7 @@ public class PocketBaseService : IArticleService
         int page = 1;
         int totalPages = 1;
 
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         do
         {
             var url = BuildListUrl(page, 500, filter, sort);
@@ -80,7 +103,7 @@ public class PocketBaseService : IArticleService
 
     public async Task<Article?> GetArticleAsync(string id)
     {
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         var response = await client.GetAsync($"{CollectionEndpoint}/{id}");
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
@@ -94,7 +117,7 @@ public class PocketBaseService : IArticleService
         article.ScrapedDate = DateTimeOffset.UtcNow;
         var payload = MapToPayload(article);
 
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         var response = await client.PostAsJsonAsync(CollectionEndpoint, payload, _jsonOptions);
         response.EnsureSuccessStatusCode();
 
@@ -108,14 +131,14 @@ public class PocketBaseService : IArticleService
     public async Task UpdateArticleAsync(string id, Article article)
     {
         var payload = MapToPayload(article);
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         var response = await client.PatchAsJsonAsync($"{CollectionEndpoint}/{id}", payload, _jsonOptions);
         response.EnsureSuccessStatusCode();
     }
 
     public async Task DeleteArticleAsync(string id)
     {
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         var response = await client.DeleteAsync($"{CollectionEndpoint}/{id}");
         if (response.StatusCode != HttpStatusCode.NotFound)
             response.EnsureSuccessStatusCode();
@@ -138,7 +161,7 @@ public class PocketBaseService : IArticleService
         var filter = $"url = '{EscapeFilter(url)}'";
         var listUrl = BuildListUrl(1, 1, filter, "");
 
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         var response = await client.GetAsync(listUrl);
         if (!response.IsSuccessStatusCode) return null;
 
@@ -147,10 +170,11 @@ public class PocketBaseService : IArticleService
         return first == null ? null : MapToArticle(first);
     }
 
-    public async Task<(int added, int skipped, List<string> errors)> AddArticlesBatchAsync(IEnumerable<Article> articles)
+    public async Task<(int added, int skipped, int updated, List<string> errors)> AddArticlesBatchAsync(IEnumerable<Article> articles)
     {
         int added = 0;
         int skipped = 0;
+        int updated = 0;
         var errors = new List<string>();
 
         foreach (var article in articles)
@@ -160,6 +184,29 @@ public class PocketBaseService : IArticleService
                 var existing = await GetArticleByUrlAsync(article.Url);
                 if (existing != null)
                 {
+                    // Decide whether to update the existing record
+                    bool shouldUpdate = false;
+
+                    // Prefer updating when incoming sentiment confidence is higher
+                    if (article.SentimentConfidence > existing.SentimentConfidence + 0.01)
+                        shouldUpdate = true;
+
+                    // Or when incoming has content and existing doesn't
+                    if (!string.IsNullOrEmpty(article.Content) && string.IsNullOrEmpty(existing.Content))
+                        shouldUpdate = true;
+
+                    // Or when incoming publishedDate is newer
+                    if (article.PublishedDate > existing.PublishedDate)
+                        shouldUpdate = true;
+
+                    if (shouldUpdate)
+                    {
+                        article.Id = existing.Id;
+                        await UpdateArticleAsync(existing.Id, article);
+                        updated++;
+                        continue;
+                    }
+
                     skipped++;
                     continue;
                 }
@@ -173,7 +220,7 @@ public class PocketBaseService : IArticleService
             }
         }
 
-        return (added, skipped, errors);
+        return (added, skipped, updated, errors);
     }
 
     public async Task<Dictionary<string, int>> GetArticleCountsBySourceAsync()
@@ -182,7 +229,7 @@ public class PocketBaseService : IArticleService
         int page = 1;
         int totalPages = 1;
 
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         do
         {
             var url = $"{CollectionEndpoint}?page={page}&perPage=500&fields=source";
@@ -217,7 +264,7 @@ public class PocketBaseService : IArticleService
         int page = 1;
         int totalPages = 1;
 
-        using var client = _httpClientFactory.CreateClient("pocketbase");
+        using var client = CreateClient();
         do
         {
             var url = $"{CollectionEndpoint}?page={page}&perPage=500&fields=sentimentLabel";

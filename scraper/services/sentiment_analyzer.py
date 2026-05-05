@@ -4,7 +4,6 @@ import json
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
-
 from huggingface_hub import InferenceClient
 
 _SENTIMENT_MODEL = os.getenv(

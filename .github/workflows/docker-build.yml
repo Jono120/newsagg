@@ -1,0 +1,73 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'scraper/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: newsagg-backend:latest
+          outputs: type=docker,dest=/tmp/backend.tar
+
+      - name: Build Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: newsagg-frontend:latest
+          outputs: type=docker,dest=/tmp/frontend.tar
+
+      - name: Build Scraper
+        uses: docker/build-push-action@v5
+        with:
+          context: ./scraper
+          file: ./scraper/Dockerfile
+          push: false
+          tags: newsagg-scraper:latest
+          outputs: type=docker,dest=/tmp/scraper.tar
+
+      - name: Upload Docker images
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-images
+          path: /tmp/*.tar
+          retention-days: 7
+
+      - name: Comment on commit
+        run: |
+          echo "✅ Docker images built successfully!"
+          echo "Images:"
+          echo "  - newsagg-backend:latest"
+          echo "  - newsagg-frontend:latest"
+          echo "  - newsagg-scraper:latest"
+          echo ""
+          echo "To use locally, download artifacts and import with:"
+          echo "  docker load -i backend.tar"
+          echo "  docker load -i frontend.tar"
+          echo "  docker load -i scraper.tar"
+          echo "  docker-compose up -d"

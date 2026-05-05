@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
 
 // Register the named HttpClient for PocketBase with the configured base URL
 var pocketBaseUrl = (builder.Configuration["PocketBase:BaseUrl"] ?? "http://localhost:8090").TrimEnd('/') + "/";
@@ -24,7 +24,7 @@ builder.Services.AddSingleton<IArticleService>(sp =>
 
     var collectionName = configuration["PocketBase:CollectionName"] ?? "articles";
 
-    return new PocketBaseService(collectionName, httpClientFactory, logger);
+    return new PocketBaseService(collectionName, httpClientFactory, logger, configuration);
 });
 
 // Configure CORS for local development
@@ -42,8 +42,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    //app.UseSwagger();
+    //app.UseSwaggerUI();
 }
 
 app.UseCors("AllowFrontend");

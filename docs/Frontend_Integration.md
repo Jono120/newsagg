@@ -146,14 +146,14 @@ Backend logs scraper activity:
 - Python must be in system PATH
 - Scraper script must exist at configured path
 - Backend must be running
-- Cosmos DB must be accessible for both API and scraper
+- PocketBase must be accessible for both API and scraper
 
 ## Troubleshooting
 
 **"Failed to refresh articles"**
 - Ensure Python is installed and in PATH
 - Check if scraper path is correct in appsettings.json
-- Verify Cosmos DB is running
+- Verify PocketBase is running
 
 **Articles not updating**
 - Wait a moment - scraper takes ~17-20 seconds

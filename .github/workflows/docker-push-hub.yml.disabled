@@ -1,0 +1,91 @@
+name: Build and Push to Docker Hub
+
+# Uncomment below to enable this workflow
+# This workflow requires GitHub Secrets:
+#   - DOCKER_USERNAME: Your Docker Hub username
+#   - DOCKER_PASSWORD: Your Docker Hub access token
+#
+# To enable:
+# 1. Rename this file to remove .disabled
+# 2. Add secrets to your repository (Settings > Secrets)
+# 3. Push to trigger the workflow
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'scraper/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-push-hub.yml'
+    tags:
+      - 'v*'
+
+jobs:
+  push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-backend:${{ github.sha }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-frontend:${{ github.sha }}
+
+      - name: Build and push Scraper
+        uses: docker/build-push-action@v5
+        with:
+          context: ./scraper
+          file: ./scraper/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-scraper:latest
+            ${{ secrets.DOCKER_USERNAME }}/newsagg-scraper:${{ github.sha }}
+
+      - name: Create deployment summary
+        run: |
+          echo "## Docker Images Published to Docker Hub" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Images pushed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Images" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKER_USERNAME }}/newsagg-backend:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKER_USERNAME }}/newsagg-frontend:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ secrets.DOCKER_USERNAME }}/newsagg-scraper:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Update your \`docker-compose.yml\` services to use these images and deploy with:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker-compose up -d" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

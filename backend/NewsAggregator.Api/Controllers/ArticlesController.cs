@@ -150,18 +150,19 @@ public class ArticlesController : ControllerBase
 
             _logger.LogInformation("Receiving batch of {Count} articles", articles.Count);
 
-            var (added, skipped, errors) = await _articleService.AddArticlesBatchAsync(articles);
+            var (added, skipped, updated, errors) = await _articleService.AddArticlesBatchAsync(articles);
 
             var result = new
             {
                 totalReceived = articles.Count,
                 added,
                 skipped,
+                updated,
                 errors = errors.Any() ? errors : null
             };
 
-            _logger.LogInformation("Batch import complete: {Added} added, {Skipped} skipped, {Errors} errors",
-                added, skipped, errors.Count);
+            _logger.LogInformation("Batch import complete: {Added} added, {Skipped} skipped, {Updated} updated, {Errors} errors",
+                added, skipped, updated, errors.Count);
 
             if (errors.Any())
             {
