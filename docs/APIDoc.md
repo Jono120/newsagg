@@ -494,4 +494,4 @@ SCRAPE_INTERVAL_MINUTES=30
 4. **Check health**: http://localhost:5000/api/health
 5. **View statistics**: http://localhost:5000/api/statistics
 
-See the [quickstart guide](QUICKSTART.md) for complete setup instructions.
+See the [quickstart guide](Quickstart.md) for complete setup instructions.

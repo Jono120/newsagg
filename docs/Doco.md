@@ -4,7 +4,7 @@ A clean overview of all project documentation.
 
 ## :rocket: Getting Started
 
-1. **[Quick Start Guide](QUICKSTART.md)** :star: **START HERE**
+1. **[Quick Start Guide](Quickstart.md)** :star: **START HERE**
    - 5-minute setup guide
    - Prerequisites checklist
    - Daily development workflow

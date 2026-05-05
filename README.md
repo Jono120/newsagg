@@ -4,7 +4,7 @@ A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Z
 
 ## :rocket: Quick Start
 
-See the [quickstart guide](./docs/QUICKSTART.md) for full setup and installation instructions.
+See the [quickstart guide](./docs/Quickstart.md) for full setup and installation instructions.
 
 ## :clipboard: Features
 
