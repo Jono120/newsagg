@@ -1,7 +1,8 @@
 targetScope = 'resourceGroup'
 
 @description('Azure region for all resources.')
-param location string = resourceGroup().location
+// Default to New Zealand North for deployments unless overridden.
+param location string = 'newzealandnorth'
 
 @description('Naming prefix used for generated resources.')
 param prefix string = 'newsagg'
@@ -19,17 +20,18 @@ param postgresDbName string = 'newsagg'
 @description('App Service plan SKU name.')
 param appServicePlanSku string = 'B1'
 
-var suffix = uniqueString(resourceGroup().id)
+//var suffix = uniqueString(resourceGroup().id)
 var sanitizedPrefix = toLower(replace(prefix, '-', ''))
 
-var webAppName = toLower('${prefix}-web-${take(suffix, 6)}')
-var functionAppName = toLower('${prefix}-func-${take(suffix, 6)}')
-var postgresServerName = toLower('${sanitizedPrefix}${take(suffix, 8)}pg')
-var keyVaultName = toLower('${sanitizedPrefix}${take(suffix, 6)}kv')
-var storageAccountName = toLower('${sanitizedPrefix}${take(suffix, 6)}sa')
+//var webAppName = toLower('${prefix}-web-${take(suffix, 6)}')
+var webAppName = toLower('${prefix}-web')
+var functionAppName = toLower('${prefix}-func')
+var postgresServerName = toLower('${sanitizedPrefix}pg')
+var keyVaultName = toLower('${sanitizedPrefix}kv')
+var storageAccountName = toLower('${sanitizedPrefix}sa')
 var postgresConnectionString = 'Host=${postgresServerName}.postgres.database.azure.com;Port=5432;Database=${postgresDbName};Username=${postgresAdminUsername};Password=${postgresAdminPassword};Ssl Mode=Require;Timeout=30'
 
-resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
+resource storage 'Microsoft.Storage/storageAccounts@2026-04-01' = {
   name: storageAccountName
   location: location
   sku: {
@@ -43,7 +45,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   }
 }
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: '${prefix}-plan'
   location: location
   kind: 'linux'
@@ -104,7 +106,7 @@ resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08
   }
 }
 
-resource webApp 'Microsoft.Web/sites@2024-04-01' = {
+resource webApp 'Microsoft.Web/sites@2025-03-01' = {
   name: webAppName
   location: location
   kind: 'app,linux'
@@ -139,7 +141,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
-resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
+resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
   name: functionAppName
   location: location
   kind: 'functionapp,linux'
@@ -150,7 +152,8 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'PYTHON|3.11'
+      // Bump to latest supported Python runtime for Functions
+      linuxFxVersion: 'PYTHON|3.12'
       alwaysOn: true
       appSettings: [
         {
@@ -178,7 +181,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+resource keyVault 'Microsoft.KeyVault/vaults@2025-05-01' = {
   name: keyVaultName
   location: location
   properties: {
@@ -205,7 +208,7 @@ resource webAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2
   }
 }
 
-resource postgresConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource postgresConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: keyVault
   name: 'PostgresConnectionString'
   properties: {

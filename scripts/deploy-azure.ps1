@@ -13,7 +13,7 @@ Prerequisites:
 param(
     [string]$EnvironmentName = 'newsagg-payg',
 
-    [string]$Location = 'australiaeast',
+    [string]$Location = 'newzealandnorth',
 
     [string]$Subscription = '9dbcb279-5b37-4903-88c2-6572c7286b0e',
 
