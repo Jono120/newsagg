@@ -26,9 +26,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        
       - name: Install Azure Developer CLI
-        uses: Azure/setup-azd@v1
+        uses: Azure/setup-azd@v2.3.0
 
       - name: Sign in to Azure
         uses: azure/login@v2
