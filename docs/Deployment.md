@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the News Aggregator using Docker Compose, which includes PocketBase, the backend API, and the frontend.
+This guide covers deploying the News Aggregator using Docker Compose for local orchestration and an Azure Web App + Function App deployment backed by PostgreSQL and Key Vault.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ docker-compose up -d
 ```
 
 This will start:
-- **PocketBase** on `http://localhost:8090` (Admin UI: `/app/`)
+- **PostgreSQL** on `localhost:5432`
 - **Backend API** on `http://localhost:5000`
 - **Frontend** on `http://localhost:3000`
 - **Scraper** (runs automatically on schedule)
@@ -40,7 +40,7 @@ docker-compose ps
 Expected output:
 ```
 NAME                           STATUS
-newsagg-pocketbase-1          Up 2 minutes
+newsagg-postgres-1           Up 2 minutes
 newsagg-backend-1             Up 2 minutes
 newsagg-frontend-1            Up 2 minutes
 newsagg-scraper-1             Up 2 minutes
@@ -48,20 +48,11 @@ newsagg-scraper-1             Up 2 minutes
 
 ### 4. First-Time Setup
 
-#### Access PocketBase Admin Panel
+#### Prepare PostgreSQL
 
-1. Open http://localhost:8090/app/
-2. Create an admin account (username/password)
-3. Create a collection named `articles` with these fields:
-   - `title` (Text, required)
-   - `description` (Text)
-   - `url` (URL, required)
-   - `source` (Text, required)
-   - `category` (Text)
-   - `publishedDate` (DateTime)
-   - `scrapedDate` (DateTime, auto-set)
-
-**Alternatively**, the backend will create the collection automatically on first run if it doesn't exist.
+1. Ensure PostgreSQL is reachable from the backend container.
+2. Create the `newsagg` database if it does not already exist.
+3. Let the backend create the `articles` table automatically on first run.
 
 #### Test the Backend
 
@@ -141,10 +132,6 @@ upstream frontend {
     server localhost:3000;
 }
 
-upstream pocketbase {
-    server localhost:8090;
-}
-
 server {
     listen 80;
     server_name yourdomain.com;
@@ -167,18 +154,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # PocketBase (admin & API)
-    location /api/pocketbase/ {
-        proxy_pass http://pocketbase/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-    }
-
-    location /app/ {
-        proxy_pass http://pocketbase/app/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-    }
 }
 ```
 
@@ -232,9 +207,12 @@ Each platform has Docker support; refer to their documentation for deployment.
 Create a `.env` file in the repository root:
 
 ```bash
-# PocketBase
-POCKETBASE_URL=http://localhost:8090
-POCKETBASE_COLLECTION=articles
+# PostgreSQL
+POSTGRES_DB=newsagg
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_PORT=5432
+CONNECTIONSTRINGS__NEWSAGGREGATOR=Host=postgres;Port=5432;Database=newsagg;Username=postgres;Password=postgres
 
 # Backend
 BACKEND_PORT=5000
@@ -255,7 +233,7 @@ services:
   backend:
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
-      - PocketBase__BaseUrl=${POCKETBASE_URL}
+      - ConnectionStrings__NewsAggregator=${CONNECTIONSTRINGS__NEWSAGGREGATOR}
 ```
 
 ---
@@ -270,18 +248,16 @@ docker-compose logs -f
 
 # Specific service
 docker-compose logs -f backend
-docker-compose logs -f pocketbase
+docker-compose logs -f postgres
 
 # Follow scraper logs
 docker-compose logs -f scraper
 ```
 
-### PocketBase Admin Panel
+### Database
 
-Access at: http://localhost:8090/app/
-- Monitor article collections
-- Manage user authentication
-- View database statistics
+- Monitor article rows using your preferred PostgreSQL client
+- Inspect database health and connectivity
 
 ### Backend Health Check
 
@@ -315,14 +291,14 @@ docker-compose down -v
 ## Data Persistence
 
 By default, volumes are created for:
-- **PocketBase data** - `newsagg_pocketbase_data`
+- **PostgreSQL data** - `newsagg_postgres_data`
 - **Frontend** - stateless
 - **Backend** - stateless
 - **Scraper** - stateless
 
 To back up your data:
 ```bash
-docker volume inspect newsagg_pocketbase_data
+docker volume inspect newsagg_postgres_data
 # Copy the path to your backup location
 ```
 
@@ -330,14 +306,14 @@ docker volume inspect newsagg_pocketbase_data
 
 ## Troubleshooting
 
-### Backend can't connect to PocketBase
-- Ensure PocketBase is running: `docker-compose ps`
-- Check logs: `docker-compose logs pocketbase`
-- Verify `POCKETBASE_URL` is correct in backend environment
+### Backend can't connect to PostgreSQL
+- Ensure PostgreSQL is running: `docker-compose ps`
+- Check logs: `docker-compose logs postgres`
+- Verify `ConnectionStrings__NewsAggregator` is correct in backend environment
 
 ### Articles not appearing
 - Check scraper logs: `docker-compose logs scraper`
-- Verify PocketBase `articles` collection exists
+- Verify the `articles` table exists and the database is reachable
 - Check backend health: `curl http://localhost:5000/api/health`
 
 ### Port already in use
@@ -358,9 +334,9 @@ docker volume inspect newsagg_pocketbase_data
 ## Next Steps
 
 1. **Customize scrapers** - See [Adding News Sources](./Frontend_Integration.md)
-2. **Configure authentication** - Set up user accounts in PocketBase
+2. **Configure authentication** - Set up user accounts in your application or identity provider
 3. **Setup SSL/TLS** - Use Let's Encrypt for HTTPS
-4. **Enable backups** - Schedule PocketBase volume backups
+4. **Enable backups** - Schedule PostgreSQL volume backups
 5. **Monitor performance** - Track article ingestion and API response times
 
 ---

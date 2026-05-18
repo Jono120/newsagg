@@ -11,21 +11,19 @@ This Quick Start gets the project running locally in five minutes. It covers pre
 - Node.js v18+ (`node --version`)
 - .NET 8 SDK (`dotnet --version`)
 - Python 3.10+ (`python --version`)
-- [PocketBase](https://pocketbase.io/docs/) v0.22+ (download the binary for your platform)
+- PostgreSQL 15+ (or a compatible hosted PostgreSQL instance)
 
 ## Quick Local Setup
 
 Open four terminals, copy and paste the following commands (or use the orchestrator in `scripts/start.ps1`). Run one command block in each terminal.
 
-Terminal 1 — PocketBase (database)
+Terminal 1 — PostgreSQL (database)
 ```powershell
-# Download pocketbase binary from https://pocketbase.io/docs/ then run:
-./pocketbase serve
+# Start PostgreSQL locally or via Docker and ensure the `newsagg` database exists.
 ```
-Expected: "Server started at http://127.0.0.1:8090"
+Expected: PostgreSQL is running and reachable on the connection string configured in `backend/NewsAggregator.Api/appsettings.json`.
 
-Open the admin UI at http://localhost:8090/_/ and create the `articles` collection.
-See [PocketBase Collection Setup](#pocketbase-collection-setup) below for the required schema.
+The backend will create the `articles` table automatically on startup.
 
 Terminal 2 — Backend API
 ```powershell
@@ -72,33 +70,11 @@ Logs are written to `logs/`. If there are any issues, they will be added to the 
 
 Swagger UI: `http://localhost:5000/swagger`
 
-## PocketBase Collection Setup
+## PostgreSQL Setup
 
-PocketBase is a self-hosted backend with a built-in SQLite database. Before starting the application you must create the `articles` collection via the admin UI at `http://localhost:8090/_/`.
+The backend creates the `articles` table and indexes automatically on startup. Ensure the connection string in `backend/NewsAggregator.Api/appsettings.json` or your environment variables points at a PostgreSQL instance and that the target database exists.
 
-### Collection name: `articles`
-
-Create a collection of type **Base** named `articles` with the following fields:
-
-| Field name           | Type   | Options                  |
-|----------------------|--------|--------------------------|
-| `title`              | Text   | Required                 |
-| `description`        | Text   | —                        |
-| `url`                | Text   | Required, Unique         |
-| `source`             | Text   | Required                 |
-| `category`           | Text   | —                        |
-| `publishedDate`      | Date   | Required                 |
-| `scrapedDate`        | Date   | —                        |
-| `content`            | Text   | (large text)             |
-| `sentimentLabel`     | Text   | —                        |
-| `sentimentScore`     | Number | —                        |
-| `sentimentConfidence`| Number | —                        |
-| `positiveWords`      | JSON   | —                        |
-| `negativeWords`      | JSON   | —                        |
-
-Under **API Rules** for the collection, set **Create**, **Update**, **Delete**, and **List/Search** rules to empty string (allow all) for local development.
-
-Example article record stored in PocketBase:
+Example article record stored in PostgreSQL:
 ```json
 {
   "id": "abc123def456xyz",
@@ -120,9 +96,8 @@ Example article record stored in PocketBase:
 PocketBase configuration in `appsettings.json`:
 ```json
 {
-  "PocketBase": {
-    "BaseUrl": "http://localhost:8090",
-    "CollectionName": "articles"
+  "ConnectionStrings": {
+    "NewsAggregator": "Host=localhost;Port=5432;Database=newsagg;Username=postgres;Password=postgres"
   }
 }
 ```
@@ -188,7 +163,7 @@ Control individual enrichment options via the API:
 - **Selective extraction**: Use `HF_ENABLE_GEMMA_EXTRACTION=0` to extract key terms only when needed
 
 ## Troubleshooting (quick checks)
-- Backend not starting: ensure PocketBase is running at `http://localhost:8090` and the `articles` collection exists. Check port 5000 is free.
+- Backend not starting: ensure PostgreSQL is running and the connection string is correct. Check port 5000 is free.
 - Frontend can't reach backend: confirm backend URL and CORS in `Program.cs`, verify `vite.config.js` proxy.
 - **Scraper can't find backend**: Verify `.env` file has `API_BASE_URL=http://localhost:5000` (not `http://backend:8080`). The backend URL must match where the API is actually running.
   - Local dev: `http://localhost:5000`
@@ -218,13 +193,13 @@ Invoke-WebRequest -Uri "http://localhost:5000/api/articles" -Method POST -Body $
 
 ## Common issues
 - Port conflicts: change backend port in `backend/NewsAggregator.Api/Properties/launchSettings.json` or frontend port in `frontend/vite.config.js`.
-- PocketBase not running: download from https://pocketbase.io/docs/ and run `./pocketbase serve`.
+- PostgreSQL not running: start your local PostgreSQL server or container and verify the configured database is reachable.
 - Missing Python packages: activate venv and run `pip install -r requirements.txt`.
 
 ## Next steps
 - Add scrapers in `scraper/scrapers/`.
 - Customize UI in `frontend/src/components/`.
-- Deploy: run PocketBase as a persistent service alongside the .NET API.
+- Deploy: run PostgreSQL as a persistent service alongside the .NET API.
 
 ## Where to get help
 - Architecture and deeper docs: [README.md](../README.md)

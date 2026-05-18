@@ -1,9 +1,9 @@
 # News Aggregator API Documentation
 
 ## Overview
-The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 8.0 and PocketBase.
+The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 8.0 and PostgreSQL.
 
-It connects with a python script that will connect and pull in the latest items from a news site. It'll then upload a link and basic information to the PocketBase database.
+It connects with a python script that will connect and pull in the latest items from a news site. It'll then upload a link and basic information to the PostgreSQL database.
 
 ## Base Development URL
 ```
@@ -367,26 +367,29 @@ const statistics = await stats.json();
 
 ## Database Schema
 
-### Article Model
-```csharp
-{
-  "id": string,              // Unique identifier (GUID)
-  "title": string,           // Article headline
-  "description": string,     // Article summary
-  "url": string,            // Article URL (must be unique)
-  "source": string,         // News source (partition key)
-  "category": string,       // Article category
-  "publishedDate": DateTime, // When article was published
-  "scrapedDate": DateTime   // When article was scraped
-}
+### Article Schema
+```sql
+CREATE TABLE articles (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL UNIQUE,
+  source TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'General',
+  published_date TIMESTAMPTZ NOT NULL,
+  scraped_date TIMESTAMPTZ NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  sentiment_label TEXT NOT NULL DEFAULT 'neutral',
+  sentiment_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+  sentiment_confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
+  positive_words TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
+  negative_words TEXT[] NOT NULL DEFAULT '{}'::TEXT[]
+);
 ```
 
-### Partition Key Strategy
-- **Partition Key**: `/source`
-- **Benefits**: 
-  - Efficient queries by source
-  - Good distribution across partitions
-  - Supports multi-region writes
+### Index Strategy
+- Unique URL constraint prevents duplicates.
+- Indexes on `source`, `category`, `published_date`, and `sentiment_label` support the common API queries.
 
 ---
 
@@ -399,9 +402,9 @@ const statistics = await stats.json();
 **Recommendation**: Always use `/api/articles/batch` for scraper operations.
 
 ### Query Performance
-- **By Source**: Fast (single partition query)
-- **By Category**: Slower (cross-partition query)
-- **All Articles**: Slowest (full scan)
+- **By Source**: Fast with a simple indexed filter.
+- **By Category**: Fast with a simple indexed filter.
+- **All Articles**: Ordered scan over the primary listing index.
 
 ### Rate Limits
 - Local development: No limits
@@ -447,7 +450,7 @@ Logs are written under `logs/` in the repository root. Use these when diagnosing
 ### Notes on behavior
 - The scraper posts batches to `/api/articles/batch`; the API performs duplicate detection and returns an object with `added`, `skipped`, and `errors` fields.
 - When running the orchestrator the backend will log scraper stdout/stderr; scraper logs are also captured under `logs/scraper.*` for easier debugging.
-- Production: Ensure PocketBase instance is accessible and database permissions are properly configured
+- Production: Ensure PostgreSQL is accessible and the application has permission to create/read/update the `articles` table.
 
 ---
 
@@ -470,9 +473,8 @@ Features:
 ### appsettings.json
 ```json
 {
-  "PocketBase": {
-    "BaseUrl": "http://localhost:8090",
-    "CollectionName": "articles"
+  "ConnectionStrings": {
+    "NewsAggregator": "Host=localhost;Port=5432;Database=newsagg;Username=postgres;Password=postgres"
   }
 }
 ```

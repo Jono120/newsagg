@@ -146,14 +146,14 @@ Backend logs scraper activity:
 - Python must be in system PATH
 - Scraper script must exist at configured path
 - Backend must be running
-- PocketBase must be accessible for both API and scraper
+- PostgreSQL must be accessible to the backend and scraper pipeline
 
 ## Troubleshooting
 
 **"Failed to refresh articles"**
 - Ensure Python is installed and in PATH
 - Check if scraper path is correct in appsettings.json
-- Verify PocketBase is running
+- Verify PostgreSQL is running and the backend connection string is correct
 
 **Articles not updating**
 - Wait a moment - scraper takes ~17-20 seconds

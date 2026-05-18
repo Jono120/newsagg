@@ -24,7 +24,7 @@ dist/
 .eslintcache
 
 # IDEs
-.vscode/
+
 .idea/
 *.swp
 *.swo

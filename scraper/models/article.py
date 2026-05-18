@@ -41,7 +41,7 @@ class Article:
 
         Ensures `publishedDate` and `scrapedDate` are in New Zealand timezone
         with proper offset (+12:00 or +13:00 depending on DST), formatted as
-        ISO 8601 strings that PocketBase/backend can parse as DateTimeOffset.
+        ISO 8601 strings that the backend can parse as DateTimeOffset.
         """
         pacific = tz.gettz("Pacific/Auckland")
 

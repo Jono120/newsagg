@@ -1,10 +1,14 @@
-# :new_zealand: News Aggregator - This is f*%*ng the News (P Gower)
+# :new_zealand: News Aggregator - sources for Aotearoa New Zealand
 
-A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Zealand news sources, stores them in PocketBase (SQLite), and displays them in a modern React interface.
+This was changed to a PostgresSQL database over a pocketbase for ease of management in the database and deployment.
+
+A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Zealand news sources, stores them in PostgreSQL, and displays them in a modern React interface.
 
 ## :rocket: Quick Start
 
 See the [quickstart guide](./docs/Quickstart.md) for full setup and installation instructions.
+
+For the containerized stack, run `scripts/start-compose.ps1`. For Azure provisioning, use `scripts/deploy-azure.ps1` after creating a resource group and choosing a location.
 
 ## :clipboard: Features
 
@@ -14,7 +18,7 @@ See the [quickstart guide](./docs/Quickstart.md) for full setup and installation
 - :symbols: **Template System** for adding new sources quickly
 - :bullettrain_front: **React Frontend** with modern UI
 - :notebook_with_decorative_cover: **ASP.NET Core Backend** with REST API
-- :floppy_disk: **PocketBase** for lightweight self-hosted storage (SQLite)
+- :floppy_disk: **PostgreSQL** for persistent relational storage
 
 ## :newspaper: News Sources
 
@@ -30,7 +34,7 @@ See the [quickstart guide](./docs/Quickstart.md) for full setup and installation
 - **Frontend**: React + Vite
 - **Backend**: ASP.NET Core 8 Web API
 - **Scraper**: Python 3.10+ with BeautifulSoup & feedparser
-- **Database**: [PocketBase](https://pocketbase.io/) (self-hosted SQLite backend)
+- **Database**: PostgreSQL
 
 ## :file_folder: Project Structure
 

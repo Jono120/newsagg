@@ -8,24 +8,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
 
-// Register the named HttpClient for PocketBase with the configured base URL
-var pocketBaseUrl = (builder.Configuration["PocketBase:BaseUrl"] ?? "http://localhost:8090").TrimEnd('/') + "/";
-builder.Services.AddHttpClient("pocketbase", client =>
-{
-    client.BaseAddress = new Uri(pocketBaseUrl);
-});
-
-// Configure PocketBase as the article storage backend
-builder.Services.AddSingleton<IArticleService>(sp =>
-{
-    var configuration = sp.GetRequiredService<IConfiguration>();
-    var logger = sp.GetRequiredService<ILogger<PocketBaseService>>();
-    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-
-    var collectionName = configuration["PocketBase:CollectionName"] ?? "articles";
-
-    return new PocketBaseService(collectionName, httpClientFactory, logger, configuration);
-});
+// Configure PostgreSQL as the article storage backend
+builder.Services.AddSingleton<IArticleService, PostgresArticleService>();
 
 // Configure CORS for local development
 builder.Services.AddCors(options =>
@@ -52,7 +36,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Initialize the article service (no-op for PocketBase; logs startup confirmation)
+// Initialize the article service and ensure the PostgreSQL schema exists.
 var articleService = app.Services.GetRequiredService<IArticleService>();
 await articleService.InitializeAsync();
 

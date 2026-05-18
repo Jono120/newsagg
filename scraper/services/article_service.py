@@ -106,7 +106,7 @@ class ArticleService:
                 try:
                     error_json = response.json()
                     if isinstance(error_json, dict):
-                        # Check for PocketBase error format
+                        # Check for common API error formats
                         if 'message' in error_json:
                             error_details = error_json['message']
                         elif 'errors' in error_json:

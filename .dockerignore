@@ -1,4 +1,11 @@
+**/bin
+**/obj
+**/node_modules
+**/.venv
+**/__pycache__
+logs
 .git
+.vs.git
 .gitignore
 .github
 docs

@@ -1,0 +1,15 @@
+name: newsagg
+
+infra:
+  path: infra
+
+services:
+  backend:
+    project: backend/NewsAggregator.Api
+    host: appservice
+    language: dotnet
+
+  scraper:
+    project: functionapp
+    host: function
+    language: python
