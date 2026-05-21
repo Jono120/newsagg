@@ -123,6 +123,9 @@ resource postgresDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08
 resource webApp 'Microsoft.Web/sites@2025-03-01' = {
   name: webAppName
   location: location
+  tags: {
+    'azd-service-name': 'backend'
+  }
   kind: 'app,linux'
   identity: {
     type: 'SystemAssigned'
@@ -158,6 +161,9 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
 resource frontendApp 'Microsoft.Web/sites@2025-03-01' = {
   name: frontendAppName
   location: location
+  tags: {
+    'azd-service-name': 'frontend'
+  }
   kind: 'app,linux'
   properties: {
     serverFarmId: appServicePlan.id
@@ -198,6 +204,9 @@ resource frontendApp 'Microsoft.Web/sites@2025-03-01' = {
 resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
   name: functionAppName
   location: location
+  tags: {
+    'azd-service-name': 'scraper'
+  }
   kind: 'functionapp,linux'
   identity: {
     type: 'SystemAssigned'
@@ -282,5 +291,6 @@ output webAppUrl string = 'https://${webApp.name}.azurewebsites.net'
 output frontendAppUrl string = 'https://${frontendApp.name}.azurewebsites.net'
 output functionAppUrl string = 'https://${functionApp.name}.azurewebsites.net'
 output acrLoginServer string = acr.properties.loginServer
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output keyVaultUri string = keyVault.properties.vaultUri
 output postgresServerFqdn string = postgres.properties.fullyQualifiedDomainName

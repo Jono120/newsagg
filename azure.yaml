@@ -1,16 +1,93 @@
-# Frontend UI (newsagg-ui) is provisioned in infra/main.bicep and deployed by .github/workflows/newsagg-ui.yml
-name: newsagg-dev
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# News Aggregator — azd project manifest
+# Infra: infra/main.bicep (PostgreSQL, Key Vault, ACR, newsagg-web / newsagg-func / newsagg-ui)
+# CI: GitHub workflows also deploy apps; azd up uses the ordered workflow below.
+
+name: newsagg
+
+metadata:
+  template: newsagg@1.0.0
+
+requiredVersions:
+  azd: ">= 1.14.0"
 
 infra:
   path: infra
 
+# Default azd up: provision, then deploy backend → scraper → frontend (UI waits for API health).
+workflows:
+  up:
+    steps:
+      - azd: provision
+      - azd: deploy backend
+      - azd: deploy scraper
+      - azd: deploy frontend
+
 services:
+  # ASP.NET Core 10 Web API → App Service newsagg-web
+  # Includes scraper/ scripts in publish output for optional in-process scrape.
   backend:
     project: backend/NewsAggregator.Api
     host: appservice
     language: dotnet
 
+  # Python 3.13 Azure Functions v2 → newsagg-func
+  # Timer calls SCRAPER_REFRESH_URL on the backend (set in Bicep).
   scraper:
     project: functionapp
     host: function
     language: python
+    remoteBuild: false
+
+  # React (Vite) + nginx container → App Service newsagg-ui
+  # Proxies /api to backend; image built via ACR remote build.
+  frontend:
+    project: .
+    host: appservice
+    language: docker
+    docker:
+      path: ./frontend/Dockerfile
+      context: .
+      remoteBuild: true
+      registry: ${AZURE_CONTAINER_REGISTRY_ENDPOINT}
+      image: newsagg-frontend
+    hooks:
+      predeploy:
+        posix:
+          shell: sh
+          interactive: false
+          continueOnError: false
+          run: |
+            set -e
+            backend="${SERVICE_BACKEND_ENDPOINT_URL:-https://newsagg-web.azurewebsites.net}"
+            echo "Waiting for backend at ${backend}/api/health"
+            for attempt in $(seq 1 36); do
+              if curl -fsS "${backend}/api/health" >/dev/null 2>&1; then
+                echo "Backend is healthy."
+                exit 0
+              fi
+              echo "Attempt ${attempt}/36: not ready, sleeping 10s..."
+              sleep 10
+            done
+            echo "Backend did not become healthy in time."
+            exit 1
+        windows:
+          shell: pwsh
+          interactive: false
+          continueOnError: false
+          run: |
+            $ErrorActionPreference = 'Stop'
+            $backend = if ($env:SERVICE_BACKEND_ENDPOINT_URL) { $env:SERVICE_BACKEND_ENDPOINT_URL } else { 'https://newsagg-web.azurewebsites.net' }
+            Write-Host "Waiting for backend at $backend/api/health"
+            1..36 | ForEach-Object {
+              try {
+                Invoke-WebRequest -Uri "$backend/api/health" -UseBasicParsing | Out-Null
+                Write-Host 'Backend is healthy.'
+                exit 0
+              } catch {
+                Write-Host "Attempt $_/36: not ready, sleeping 10s..."
+                Start-Sleep -Seconds 10
+              }
+            }
+            throw 'Backend did not become healthy in time.'

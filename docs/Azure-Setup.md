@@ -233,8 +233,9 @@ On workflow_dispatch, **azure-deployment** also runs `azd deploy` for:
 
 - `backend` → `newsagg-web`
 - `scraper` → `newsagg-func`
+- `frontend` → `newsagg-ui` (Docker via ACR; `azure.yaml` predeploy hook waits for backend health)
 
-The **UI is not** deployed by azd; always use **newsagg-ui.yml** for the frontend container.
+GitHub **newsagg-ui.yml** is still used for UI-only CI after web/func workflows.
 
 ---
 
