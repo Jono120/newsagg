@@ -1,6 +1,23 @@
 # Deployment Guide
 
-This guide covers deploying the News Aggregator using Docker Compose for local orchestration and an Azure Web App + Function App deployment backed by PostgreSQL and Key Vault.
+This guide covers deploying the News Aggregator using Docker Compose for local orchestration and an Azure stack (API + Function App + frontend UI) backed by PostgreSQL and Key Vault.
+
+## Azure (GitHub Actions)
+
+Three app workflows deploy in order:
+
+1. **`newsagg-web.yml`** — ASP.NET Core API (`newsagg-web`)
+2. **`newsagg-func.yml`** — Python timer function (`newsagg-func`)
+3. **`newsagg-frontend.yml`** — React UI in nginx on `newsagg-ui` (runs after web/func succeed, or on `frontend/**` pushes)
+
+Provision infra first with **`azure-deployment.yml`** (push to `infra/**` or manual `workflow_dispatch` for full `azd up`). The frontend workflow builds a Docker image in ACR and starts the UI App Service; `/api` is proxied to the backend.
+
+| Service | URL |
+|---------|-----|
+| Frontend (SPA) | `https://newsagg-ui.azurewebsites.net` |
+| Backend API | `https://newsagg-web.azurewebsites.net` |
+
+Set GitHub variable `AZURE_RESOURCE_GROUP` if your resource group is not `rg-newsagg-prod`. Uses `AZURE_CLIENT_ID` / tenant / subscription secrets (same as `azure-deployment.yml`).
 
 ## Prerequisites
 
@@ -222,9 +239,10 @@ ASPNETCORE_ENVIRONMENT=Production
 FRONTEND_PORT=3000
 VITE_API_URL=http://localhost:5000
 
-# Scraper
-SCRAPER_INTERVAL_MINUTES=30
-API_BASE_URL=http://localhost:5000
+# Scraper (compose scraper service)
+SCRAPE_INTERVAL_MINUTES=30
+SCRAPE_EXTRACT_CONTENT=1
+API_BASE_URL=http://backend:8080
 ```
 
 Load these in `docker-compose.yml`:

@@ -1,7 +1,7 @@
 # News Aggregator API Documentation
 
 ## Overview
-The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 8.0 and PostgreSQL.
+The News Aggregator API provides endpoints for managing news articles from multiple RSS feed sources. Built with ASP.NET Core 10 and PostgreSQL.
 
 It connects with a python script that will connect and pull in the latest items from a news site. It'll then upload a link and basic information to the PostgreSQL database.
 

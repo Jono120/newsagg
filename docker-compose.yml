@@ -1,6 +1,7 @@
+# Local development stack. Production Azure uses managed PostgreSQL and App Service / Functions (not the postgres service below).
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: newsagg-postgres
     restart: unless-stopped
     environment:
@@ -42,6 +43,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      BACKEND_URL: http://backend:8080
     ports:
       - "${FRONTEND_PORT:-3000}:80"
 

@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'infra/**'
+      - 'azure.yaml'
+      - 'frontend/Dockerfile'
+      - 'frontend/nginx.conf.template'
+      - 'frontend/docker-entrypoint.sh'
   workflow_dispatch:
 
 permissions:
@@ -11,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: azure-deployment-${{ github.ref }}
+  group: azure-newsagg-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,8 +31,8 @@ jobs:
       AZD_DEBUG_LOGGING: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        
+        uses: actions/checkout@v6
+
       - name: Install Azure Developer CLI
         uses: Azure/setup-azd@v2.3.0
 
@@ -47,7 +53,12 @@ jobs:
           azd env config set infra.parameters.postgresAdminUsername "${{ secrets.POSTGRES_ADMIN_USERNAME }}" --environment "$AZURE_ENV_NAME"
           azd env config set infra.parameters.prefix "${{ vars.AZD_PREFIX || 'newsagg' }}" --environment "$AZURE_ENV_NAME"
 
-      - name: Provision and deploy
+      - name: Provision infrastructure
+        if: github.event_name == 'push'
         shell: bash
-        run: |
-          azd up --environment "$AZURE_ENV_NAME" --no-prompt
+        run: azd provision --environment "$AZURE_ENV_NAME" --no-prompt
+
+      - name: Provision and deploy (bootstrap / recovery)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: azd up --environment "$AZURE_ENV_NAME" --no-prompt

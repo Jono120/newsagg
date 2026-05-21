@@ -1,4 +1,5 @@
-name: newsagg
+# Frontend UI (newsagg-ui) is provisioned in infra/main.bicep and deployed by .github/workflows/newsagg-ui.yml
+name: newsagg-dev
 
 infra:
   path: infra

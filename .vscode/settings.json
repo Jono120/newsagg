@@ -4,5 +4,6 @@
     "azureFunctions.pythonVenv": ".venv",
     "azureFunctions.projectLanguage": "Python",
     "azureFunctions.projectRuntime": "~4",
+    "azureFunctions.pythonVersion": "3.13",
     "debug.internalConsoleOptions": "neverOpen"
 }

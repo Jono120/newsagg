@@ -8,7 +8,7 @@ A full-stack news aggregation platform that pulls articles from 4 Aotearoa New Z
 
 See the [quickstart guide](./docs/Quickstart.md) for full setup and installation instructions.
 
-For the containerized stack, run `scripts/start-compose.ps1`. For Azure provisioning, use `scripts/deploy-azure.ps1` after creating a resource group and choosing a location.
+For the containerized stack, run `scripts/start-compose.ps1`. For Azure, follow [Azure full-stack setup](./docs/Azure-Setup.md) (GitHub Actions or `scripts/deploy-azure.ps1`).
 
 ## :clipboard: Features
 
@@ -31,10 +31,10 @@ For the containerized stack, run `scripts/start-compose.ps1`. For Azure provisio
 
 ## :office: Architecture
 
-- **Frontend**: React + Vite
-- **Backend**: ASP.NET Core 8 Web API
-- **Scraper**: Python 3.10+ with BeautifulSoup & feedparser
-- **Database**: PostgreSQL
+- **Frontend**: React + Vite (Azure: `newsagg-ui` App Service + ACR)
+- **Backend**: ASP.NET Core 10 Web API
+- **Scraper**: Python 3.13+ with BeautifulSoup & feedparser
+- **Database**: PostgreSQL 17
 
 ## :file_folder: Project Structure
 

@@ -8,10 +8,10 @@ This Quick Start gets the project running locally in five minutes. It covers pre
 - Scraper: [scraper](scraper)
 
 ## Prerequisites
-- Node.js v18+ (`node --version`)
-- .NET 8 SDK (`dotnet --version`)
-- Python 3.10+ (`python --version`)
-- PostgreSQL 15+ (or a compatible hosted PostgreSQL instance)
+- Node.js v22+ (`node --version`)
+- .NET 10 SDK (`dotnet --version`)
+- Python 3.13+ (`python --version`)
+- PostgreSQL 17+ (or a compatible hosted PostgreSQL instance)
 
 ## Quick Local Setup
 

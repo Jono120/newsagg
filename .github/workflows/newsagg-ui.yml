@@ -1,0 +1,127 @@
+# Deploy React UI (nginx container) after backend API and Function App are live.
+# Uses ACR + App Service newsagg-ui from infra/main.bicep.
+
+name: Build and deploy UI to Azure Web App - newsagg-ui
+
+on:
+  workflow_run:
+    workflows:
+      - Build and deploy ASP.Net Core app to Azure Web App - newsagg-web
+      - Build and deploy Python project to Azure Function App - newsagg-func
+    types:
+      - completed
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/newsagg-ui.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: azure-newsagg-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-newsagg-prod' }}
+  RESOURCE_PREFIX: ${{ vars.AZD_PREFIX || 'newsagg' }}
+  BACKEND_APP_NAME: ${{ format('{0}-web', vars.AZD_PREFIX || 'newsagg') }}
+  FRONTEND_APP_NAME: ${{ format('{0}-ui', vars.AZD_PREFIX || 'newsagg') }}
+  ACR_NAME: ${{ format('{0}acr', vars.AZD_PREFIX || 'newsagg') }}
+  IMAGE_NAME: newsagg-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Wait for backend API
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://${BACKEND_APP_NAME}.azurewebsites.net/api/health"
+          echo "Waiting for backend at $url"
+          for attempt in $(seq 1 36); do
+            if curl -fsS "$url" >/dev/null 2>&1; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+            echo "Attempt $attempt/36: backend not ready, retrying in 10s..."
+            sleep 10
+          done
+          echo "Backend did not become healthy in time."
+          exit 1
+
+      - name: Build and push frontend image to ACR
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_SHA}"
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "${IMAGE_NAME}:${tag}" \
+            --image "${IMAGE_NAME}:latest" \
+            --file frontend/Dockerfile \
+            .
+
+      - name: Deploy container to frontend App Service
+        shell: bash
+        run: |
+          set -euo pipefail
+          login_server="$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)"
+          image="${login_server}/${IMAGE_NAME}:${GITHUB_SHA}"
+
+          az webapp config container set \
+            --name "$FRONTEND_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --container-image-name "$image"
+
+          az webapp config appsettings set \
+            --name "$FRONTEND_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --settings "BACKEND_URL=https://${BACKEND_APP_NAME}.azurewebsites.net" \
+            --output none
+
+          az webapp restart \
+            --name "$FRONTEND_APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP"
+
+      - name: Wait for frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://${FRONTEND_APP_NAME}.azurewebsites.net/"
+          echo "Waiting for frontend at $url"
+          for attempt in $(seq 1 24); do
+            if curl -fsS "$url" >/dev/null 2>&1; then
+              echo "Frontend is serving traffic."
+              exit 0
+            fi
+            echo "Attempt $attempt/24: frontend not ready, retrying in 10s..."
+            sleep 10
+          done
+          echo "Frontend did not respond in time."
+          exit 1
+
+      - name: Summary
+        run: |
+          echo "Frontend URL: https://${FRONTEND_APP_NAME}.azurewebsites.net"
+          echo "Backend API (proxied at /api): https://${BACKEND_APP_NAME}.azurewebsites.net"

@@ -23,9 +23,11 @@ param appServicePlanSku string = 'B1'
 //var suffix = uniqueString(resourceGroup().id)
 var sanitizedPrefix = toLower(replace(prefix, '-', ''))
 
-//var webAppName = toLower('${prefix}-web-${take(suffix, 6)}')
+//var webAppName = toLower('${prefix}-web')
 var webAppName = toLower('${prefix}-web')
 var functionAppName = toLower('${prefix}-func')
+var frontendAppName = toLower('${prefix}-ui')
+var acrName = toLower('${sanitizedPrefix}acr')
 var postgresServerName = toLower('${sanitizedPrefix}pg')
 var keyVaultName = toLower('${sanitizedPrefix}kv')
 var storageAccountName = toLower('${sanitizedPrefix}sa')
@@ -42,6 +44,18 @@ resource storage 'Microsoft.Storage/storageAccounts@2026-04-01' = {
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
+  }
+}
+
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+  name: acrName
+  location: location
+  sku: {
+    name: 'Basic'
+  }
+  properties: {
+    adminUserEnabled: true
+    publicNetworkAccess: 'Enabled'
   }
 }
 
@@ -69,7 +83,7 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   properties: {
     administratorLogin: postgresAdminUsername
     administratorLoginPassword: postgresAdminPassword
-    version: '16'
+    version: '17'
     storage: {
       storageSizeGB: 32
     }
@@ -117,7 +131,7 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'DOTNETCORE|8.0'
+      linuxFxVersion: 'DOTNETCORE|10.0'
       alwaysOn: true
       appSettings: [
         {
@@ -141,6 +155,46 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
   }
 }
 
+resource frontendApp 'Microsoft.Web/sites@2025-03-01' = {
+  name: frontendAppName
+  location: location
+  kind: 'app,linux'
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${acr.properties.loginServer}/newsagg-frontend:latest'
+      alwaysOn: true
+      appSettings: [
+        {
+          name: 'WEBSITES_PORT'
+          value: '80'
+        }
+        {
+          name: 'BACKEND_URL'
+          value: 'https://${webAppName}.azurewebsites.net'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_URL'
+          value: 'https://${acr.properties.loginServer}'
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
+          value: acr.listCredentials().username
+        }
+        {
+          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
+          value: acr.listCredentials().passwords[0].value
+        }
+        {
+          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
+          value: 'false'
+        }
+      ]
+    }
+  }
+}
+
 resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
   name: functionAppName
   location: location
@@ -153,7 +207,7 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
     httpsOnly: true
     siteConfig: {
       // Bump to latest supported Python runtime for Functions
-      linuxFxVersion: 'PYTHON|3.12'
+      linuxFxVersion: 'PYTHON|3.13'
       alwaysOn: true
       appSettings: [
         {
@@ -167,6 +221,14 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'python'
+        }
+        {
+          name: 'AzureWebJobsFeatureFlags'
+          value: 'EnableWorkerIndexing'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
         }
         {
           name: 'SCRAPER_REFRESH_URL'
@@ -217,6 +279,8 @@ resource postgresConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01'
 }
 
 output webAppUrl string = 'https://${webApp.name}.azurewebsites.net'
+output frontendAppUrl string = 'https://${frontendApp.name}.azurewebsites.net'
 output functionAppUrl string = 'https://${functionApp.name}.azurewebsites.net'
+output acrLoginServer string = acr.properties.loginServer
 output keyVaultUri string = keyVault.properties.vaultUri
 output postgresServerFqdn string = postgres.properties.fullyQualifiedDomainName
