@@ -37,8 +37,13 @@ public class PostgresArticleService : IArticleService
                 sentiment_score DOUBLE PRECISION NOT NULL DEFAULT 0,
                 sentiment_confidence DOUBLE PRECISION NOT NULL DEFAULT 0,
                 positive_words TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
-                negative_words TEXT[] NOT NULL DEFAULT '{}'::TEXT[]
+                negative_words TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
+                key_phrases TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
+                entities TEXT[] NOT NULL DEFAULT '{}'::TEXT[]
             );
+
+            ALTER TABLE articles ADD COLUMN IF NOT EXISTS key_phrases TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
+            ALTER TABLE articles ADD COLUMN IF NOT EXISTS entities TEXT[] NOT NULL DEFAULT '{}'::TEXT[];
 
             CREATE INDEX IF NOT EXISTS idx_articles_source ON articles (source);
             CREATE INDEX IF NOT EXISTS idx_articles_category ON articles (category);
@@ -80,7 +85,9 @@ public class PostgresArticleService : IArticleService
                 sentiment_score,
                 sentiment_confidence,
                 positive_words,
-                negative_words
+                negative_words,
+                key_phrases,
+                entities
             ) VALUES (
                 @id,
                 @title,
@@ -95,7 +102,9 @@ public class PostgresArticleService : IArticleService
                 @sentiment_score,
                 @sentiment_confidence,
                 @positive_words,
-                @negative_words
+                @negative_words,
+                @key_phrases,
+                @entities
             );
             """;
 
@@ -120,12 +129,42 @@ public class PostgresArticleService : IArticleService
                 sentiment_score = @sentiment_score,
                 sentiment_confidence = @sentiment_confidence,
                 positive_words = @positive_words,
-                negative_words = @negative_words
+                negative_words = @negative_words,
+                key_phrases = @key_phrases,
+                entities = @entities
             WHERE id = @id;
             """;
 
         article.Id = id;
         await ExecuteAsync(sql, command => BindArticleParameters(command, article));
+    }
+
+    public async Task UpdateSentimentAsync(string id, TextAnalyticsResult analysis)
+    {
+        const string sql = $"""
+            UPDATE {TableName}
+            SET
+                sentiment_label = @sentiment_label,
+                sentiment_score = @sentiment_score,
+                sentiment_confidence = @sentiment_confidence,
+                positive_words = @positive_words,
+                negative_words = @negative_words,
+                key_phrases = @key_phrases,
+                entities = @entities
+            WHERE id = @id;
+            """;
+
+        await ExecuteAsync(sql, command =>
+        {
+            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("sentiment_label", analysis.Label ?? "neutral");
+            command.Parameters.AddWithValue("sentiment_score", analysis.Score);
+            command.Parameters.AddWithValue("sentiment_confidence", analysis.Confidence);
+            command.Parameters.AddWithValue("positive_words", analysis.PositiveWords?.ToArray() ?? Array.Empty<string>());
+            command.Parameters.AddWithValue("negative_words", analysis.NegativeWords?.ToArray() ?? Array.Empty<string>());
+            command.Parameters.AddWithValue("key_phrases", analysis.KeyPhrases?.ToArray() ?? Array.Empty<string>());
+            command.Parameters.AddWithValue("entities", analysis.Entities?.ToArray() ?? Array.Empty<string>());
+        });
     }
 
     public async Task DeleteArticleAsync(string id)
@@ -298,6 +337,8 @@ public class PostgresArticleService : IArticleService
         command.Parameters.AddWithValue("sentiment_confidence", article.SentimentConfidence);
         command.Parameters.AddWithValue("positive_words", article.PositiveWords?.ToArray() ?? Array.Empty<string>());
         command.Parameters.AddWithValue("negative_words", article.NegativeWords?.ToArray() ?? Array.Empty<string>());
+        command.Parameters.AddWithValue("key_phrases", article.KeyPhrases?.ToArray() ?? Array.Empty<string>());
+        command.Parameters.AddWithValue("entities", article.Entities?.ToArray() ?? Array.Empty<string>());
     }
 
     private static Article MapArticle(NpgsqlDataReader reader)
@@ -317,7 +358,9 @@ public class PostgresArticleService : IArticleService
             SentimentScore = reader.GetDouble(reader.GetOrdinal("sentiment_score")),
             SentimentConfidence = reader.GetDouble(reader.GetOrdinal("sentiment_confidence")),
             PositiveWords = ReadStringArray(reader, "positive_words"),
-            NegativeWords = ReadStringArray(reader, "negative_words")
+            NegativeWords = ReadStringArray(reader, "negative_words"),
+            KeyPhrases = ReadStringArray(reader, "key_phrases"),
+            Entities = ReadStringArray(reader, "entities")
         };
     }
 

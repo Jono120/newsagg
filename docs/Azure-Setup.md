@@ -41,10 +41,13 @@ flowchart TB
 |-------|----------------|-------------|
 | Database | PostgreSQL Flexible Server (`newsaggpg`) | `azure-deployment` / Bicep |
 | Secrets | Key Vault (`newsaggkv`) | Bicep |
+| Text analytics | Azure AI Language (`newsagg-lang`) | Bicep |
 | Backend API | App Service `newsagg-web` (.NET 10) | `newsagg-web.yml` |
 | Scraper timer | Function App `newsagg-func` (Python 3.13) | `newsagg-func.yml` |
 | Frontend | App Service `newsagg-ui` (nginx + React container) | `newsagg-ui.yml` |
 | Images | ACR `newsaggacr` | Bicep + `newsagg-ui.yml` |
+
+The Bicep template provisions an Azure AI Language (Text Analytics) account, stores its access key in Key Vault as `AzureLanguageKey`, and surfaces `AzureLanguage__Endpoint`/`AzureLanguage__Key` to the API and `ANALYZER_PROVIDER`/`AZURE_LANGUAGE_ENDPOINT`/`AZURE_LANGUAGE_KEY` to the scraper Function App. The optional `huggingFaceToken` parameter is stored as the `HuggingFaceToken` secret and surfaced to the Function App as `HF_TOKEN`. The required `apiSecurityKey` parameter is stored as the `ApiSecurityKey` secret and surfaced to the API as `Security__ApiKey`; the API's analyse endpoints (`/api/articles/{id}/analyze`, `/api/articles/analyze-missing`) require this value in the `X-Api-Key` request header. Both apps' managed identities are granted Key Vault Secrets User.
 
 **Public URLs (default prefix `newsagg`):**
 
@@ -127,6 +130,7 @@ Used only by **azure-deployment.yml**.
 | Secret | `AZURE_SUBSCRIPTION_ID` | Yes | |
 | Secret | `POSTGRES_ADMIN_PASSWORD` | Yes | Strong password; stored in Key Vault via Bicep |
 | Secret | `POSTGRES_ADMIN_USERNAME` | No | Default `pgadmin` |
+| Secret | `API_SECURITY_KEY` | Yes | Random key for the protected analyse endpoints; stored in Key Vault as `ApiSecurityKey` and sent by clients as `X-Api-Key` |
 
 ### Repository secrets — `newsagg-web.yml`
 
@@ -186,6 +190,7 @@ Subsequent pushes to `infra/**` or `azure.yaml` run **`azd provision`** only (no
 ```powershell
 .\scripts\deploy-azure.ps1 `
   -PostgresAdminPassword '<strong-password>' `
+  -ApiSecurityKey '<random-api-key>' `
   -ProvisionOnly   # infra only; omit for full azd up
 ```
 
@@ -195,7 +200,7 @@ Uses azd environment **`newsagg-prod`** (matches GitHub).
 
 - Resource group (via azd)
 - PostgreSQL 17, database `newsagg`
-- Key Vault + Postgres connection string secret
+- Key Vault + secrets (Postgres connection string, `AzureLanguageKey`, `ApiSecurityKey`, optional `HuggingFaceToken`)
 - Linux App Service plan (B1)
 - `newsagg-web`, `newsagg-func`, `newsagg-ui`
 - ACR `newsaggacr`
@@ -253,7 +258,13 @@ curl -s https://newsagg-ui.azurewebsites.net/api/articles
 
 # Manual scraper trigger (Function key may be required for direct func URL)
 curl -X POST https://newsagg-web.azurewebsites.net/api/scraper/refresh
+
+# Re-analysis endpoints require the API key (X-Api-Key = apiSecurityKey parameter)
+curl -X POST "https://newsagg-web.azurewebsites.net/api/articles/analyze-missing?limit=50" \
+  -H "X-Api-Key: <api-security-key>"
 ```
+
+Note: the analyse endpoints and `scraper/refresh` are rate limited to 5 requests per minute per client IP (`429 Too Many Requests` when exceeded).
 
 | Check | Expected |
 |-------|----------|
@@ -274,6 +285,22 @@ curl -X POST https://newsagg-web.azurewebsites.net/api/scraper/refresh
 | UI change | Push `frontend/**` → `newsagg-ui` (or auto after web/func) |
 | Full reprovision + azd apps | Manual **Azure Deployment** workflow |
 | Local full stack | `docker-compose up` or `scripts/start-compose.ps1` |
+
+---
+
+## Production hardening baseline (`newzealandnorth`)
+
+- Standard environment: `newsagg-production` (GitHub) + `rg-newsagg-prod` (Azure)
+- Region lock: keep all primary services in `newzealandnorth`
+- API discoverability: Swagger available at `https://newsagg-web.azurewebsites.net/docs`
+- Readiness endpoint: `GET /api/health/ready`
+- Growth endpoints for attribution and conversion:
+  - `POST /api/growth/subscribe`
+  - `POST /api/growth/events`
+  - `GET /api/growth/summary`
+  - `GET /api/growth/scale-gate`
+
+Operational runbook and rollback steps are maintained in [Production-Runbook.md](./Production-Runbook.md).
 
 ---
 

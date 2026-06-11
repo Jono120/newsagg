@@ -9,20 +9,20 @@ from dotenv import load_dotenv
 from scrapers import get_all_scrapers
 from services.article_service import ArticleService
 from services.content_extractor import extract_content
-from services.sentiment_analyzer import analyze_text_sentiment_and_terms
+from services.text_analyzer import analyze as analyze_text
 
-# Configure logging
+# Configure logging.
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Suppress verbose dependency logs (e.g., per-request HTTP info from HF/httpx)
+# Suppress verbose dependency logs (for example, per-request HTTP info from HF/httpx).
 for noisy_logger in ("httpx", "httpcore", "huggingface_hub"):
     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
-# Load environment variables
+# Load environment variables.
 load_dotenv()
 
 def _enrich_article(article, extract_flag):
@@ -31,14 +31,14 @@ def _enrich_article(article, extract_flag):
     This function is designed to run in parallel via ThreadPoolExecutor.
     
     Args:
-        article: Article object to enrich
-        extract_flag: Whether to extract content from the article URL
+        article: Article object to enrich.
+        extract_flag: Whether to extract content from the article URL.
     
     Returns:
-        tuple: (article, error_msg or None)
+        tuple: (article, error_msg or None).
     """
     try:
-        # Content extraction (if enabled)
+        # Content extraction (if enabled).
         if extract_flag and not getattr(article, 'content', None):
             try:
                 content = extract_content(article.url, timeout=10)
@@ -47,19 +47,21 @@ def _enrich_article(article, extract_flag):
             except Exception as e:
                 logger.debug('Content extraction failed for %s: %s', article.url, str(e))
         
-        # Sentiment analysis
+        # Sentiment analysis.
         title = getattr(article, 'title', '')
         description = getattr(article, 'description', '')
         content = getattr(article, 'content', '')
         context_text = f"{description} {content[:2000]}".strip()
         
         try:
-            sentiment = analyze_text_sentiment_and_terms(title, context_text)
+            sentiment = analyze_text(title, context_text)
             article.sentiment_label = sentiment.label
             article.sentiment_score = sentiment.score
             article.sentiment_confidence = sentiment.confidence
             article.positive_words = sentiment.positive_words
             article.negative_words = sentiment.negative_words
+            article.key_phrases = sentiment.key_phrases
+            article.entities = sentiment.entities
         except Exception as e:
             logger.debug('Sentiment analysis failed for %s: %s', article.url, str(e))
         
@@ -75,7 +77,7 @@ class ScraperOrchestrator:
             articles_endpoint=os.getenv('API_ARTICLES_ENDPOINT', '/api/articles')
         )
         
-        # Validate backend connectivity early
+        # Validate backend connectivity early.
         try:
             import requests
             health_url = f"{self.article_service.base_url}/api/health"
@@ -87,7 +89,7 @@ class ScraperOrchestrator:
         except Exception as e:
             logger.warning(f"Could not verify backend at {self.article_service.base_url}: {e}. Proceeding with scraping.")
         
-        # Auto-load all registered scrapers
+        # Auto-load all registered scrapers.
         self.scrapers = get_all_scrapers()
         logger.info(f"Loaded {len(self.scrapers)} scrapers: {', '.join(s.source for s in self.scrapers)}")
         logger.info(f"Backend API: {self.article_service.articles_url}")
@@ -109,14 +111,14 @@ class ScraperOrchestrator:
                 if articles:
                     total_scraped += len(articles)
 
-                    # Enrich articles in parallel (content extraction + sentiment analysis)
+                    # Enrich articles in parallel (content extraction + sentiment analysis).
                     extract_flag = os.getenv('SCRAPE_EXTRACT_CONTENT', '1')
                     extract_enabled = extract_flag and extract_flag.lower() not in ('0', 'false', 'no')
                     
                     enrichment_start = time.time()
                     enriched_articles = []
                     
-                    # Use ThreadPoolExecutor for parallel enrichment (max 4 workers to avoid rate limiting)
+                    # Use ThreadPoolExecutor for parallel enrichment (max 4 workers to avoid rate limiting).
                     with ThreadPoolExecutor(max_workers=4) as executor:
                         futures = [
                             executor.submit(_enrich_article, art, extract_enabled)
@@ -135,7 +137,7 @@ class ScraperOrchestrator:
                     enrichment_time = time.time() - enrichment_start
                     logger.info("Enriched %d articles in %.2f seconds", len(enriched_articles), enrichment_time)
 
-                    # Use batch import for efficiency
+                    # Use batch import for efficiency.
                     result = self.article_service.create_articles_batch(enriched_articles)
                     total_added += result.get('added', 0)
                     total_skipped += result.get('skipped', 0)
@@ -146,7 +148,7 @@ class ScraperOrchestrator:
                     
                     errors = result.get('errors') or []
                     if errors:
-                        # Log a small sample of errors to aid debugging without flooding logs
+                        # Log a small sample of errors to aid debugging without flooding logs.
                         sample = errors[:5]
                         try:
                             sample_str = str(sample)
@@ -171,23 +173,23 @@ class ScraperOrchestrator:
         }
     
     def run_once(self):
-        """Run scrapers once"""
+        """Run scrapers once."""
         self.scrape_all()
     
     def run_scheduled(self):
-        """Run scrapers on a schedule"""
+        """Run scrapers on a schedule."""
         interval = int(os.getenv('SCRAPE_INTERVAL_MINUTES', '30'))
         logger.info("Scheduling scraper to run every %d minutes", interval)
         
-        # Run immediately on start
+        # Run immediately on start.
         self.scrape_all()
         
-        # Schedule periodic runs
+        # Schedule periodic runs.
         schedule.every(interval).minutes.do(self.scrape_all)
         
         while True:
             schedule.run_pending()
-            time.sleep(60)  # Check every minute
+            time.sleep(60)  # Check every minute.
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Scraper orchestrator')

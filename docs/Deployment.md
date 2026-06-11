@@ -8,7 +8,7 @@ Three app workflows deploy in order:
 
 1. **`newsagg-web.yml`** — ASP.NET Core API (`newsagg-web`)
 2. **`newsagg-func.yml`** — Python timer function (`newsagg-func`)
-3. **`newsagg-frontend.yml`** — React UI in nginx on `newsagg-ui` (runs after web/func succeed, or on `frontend/**` pushes)
+3. **`newsagg-ui.yml`** — React UI in nginx on `newsagg-ui` (runs after web/func succeed, or on `frontend/**` pushes)
 
 Provision infra first with **`azure-deployment.yml`** (push to `infra/**` or manual `workflow_dispatch` for full `azd up`). The frontend workflow builds a Docker image in ACR and starts the UI App Service; `/api` is proxied to the backend.
 
@@ -63,7 +63,7 @@ newsagg-frontend-1            Up 2 minutes
 newsagg-scraper-1             Up 2 minutes
 ```
 
-### 4. First-Time Setup
+### 4. First-time setup
 
 #### Prepare PostgreSQL
 
@@ -126,7 +126,7 @@ Deploy to a Linux VPS (DigitalOcean, Linode, etc.):
    docker-compose up -d
    ```
 
-6. **Setup reverse proxy (Nginx)**
+6. **Set up reverse proxy (Nginx)**
    ```bash
    # Install nginx
    sudo apt update && sudo apt install -y nginx
@@ -180,7 +180,7 @@ server {
    sudo certbot --nginx -d yourdomain.com
    ```
 
-### Option 2: Docker Hub Automated Builds
+### Option 2: Docker Hub automated builds
 
 Push your Docker images to Docker Hub for easier deployment:
 
@@ -205,7 +205,7 @@ Push your Docker images to Docker Hub for easier deployment:
        image: yourusername/newsagg-scraper:latest
    ```
 
-### Option 3: Lightweight Cloud Platforms
+### Option 3: Lightweight cloud platforms
 
 Popular free/cheap options for lightweight deployments:
 
@@ -353,7 +353,7 @@ docker volume inspect newsagg_postgres_data
 
 1. **Customize scrapers** - See [Adding News Sources](./Frontend_Integration.md)
 2. **Configure authentication** - Set up user accounts in your application or identity provider
-3. **Setup SSL/TLS** - Use Let's Encrypt for HTTPS
+3. **Set up SSL/TLS** - Use Let's Encrypt for HTTPS
 4. **Enable backups** - Schedule PostgreSQL volume backups
 5. **Monitor performance** - Track article ingestion and API response times
 

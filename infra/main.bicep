@@ -20,6 +20,20 @@ param postgresDbName string = 'newsagg'
 @description('App Service plan SKU name.')
 param appServicePlanSku string = 'B1'
 
+@description('Analyzer provider used by the scraper and API (azure | huggingface | rules).')
+param analyzerProvider string = 'azure'
+
+@description('SKU for the Azure AI Language (Cognitive Services) account.')
+param languageSku string = 'S'
+
+@secure()
+@description('HuggingFace API token used by the scraper when ANALYZER_PROVIDER=huggingface. Leave empty if unused.')
+param huggingFaceToken string = ''
+
+@secure()
+@description('API key required by the protected analyse endpoints (sent as the X-Api-Key header).')
+param apiSecurityKey string
+
 //var suffix = uniqueString(resourceGroup().id)
 var sanitizedPrefix = toLower(replace(prefix, '-', ''))
 
@@ -31,6 +45,7 @@ var acrName = toLower('${sanitizedPrefix}acr')
 var postgresServerName = toLower('${sanitizedPrefix}pg')
 var keyVaultName = toLower('${sanitizedPrefix}kv')
 var storageAccountName = toLower('${sanitizedPrefix}sa')
+var languageAccountName = toLower('${prefix}-lang')
 var postgresConnectionString = 'Host=${postgresServerName}.postgres.database.azure.com;Port=5432;Database=${postgresDbName};Username=${postgresAdminUsername};Password=${postgresAdminPassword};Ssl Mode=Require;Timeout=30'
 
 resource storage 'Microsoft.Storage/storageAccounts@2026-04-01' = {
@@ -55,6 +70,19 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   }
   properties: {
     adminUserEnabled: true
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource language 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+  name: languageAccountName
+  location: location
+  kind: 'TextAnalytics'
+  sku: {
+    name: languageSku
+  }
+  properties: {
+    customSubDomainName: languageAccountName
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -153,6 +181,22 @@ resource webApp 'Microsoft.Web/sites@2025-03-01' = {
           name: 'ConnectionStrings__NewsAggregator'
           value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/PostgresConnectionString/)'
         }
+        {
+          name: 'AzureLanguage__Provider'
+          value: analyzerProvider
+        }
+        {
+          name: 'AzureLanguage__Endpoint'
+          value: language.properties.endpoint
+        }
+        {
+          name: 'AzureLanguage__Key'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/AzureLanguageKey/)'
+        }
+        {
+          name: 'Security__ApiKey'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/ApiSecurityKey/)'
+        }
       ]
     }
   }
@@ -215,7 +259,7 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      // Bump to latest supported Python runtime for Functions
+      // Use the latest supported Python runtime for Functions.
       linuxFxVersion: 'PYTHON|3.13'
       alwaysOn: true
       appSettings: [
@@ -246,6 +290,22 @@ resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
         {
           name: 'SCRAPE_SCHEDULE_CRON'
           value: '0 */30 * * * *'
+        }
+        {
+          name: 'ANALYZER_PROVIDER'
+          value: analyzerProvider
+        }
+        {
+          name: 'AZURE_LANGUAGE_ENDPOINT'
+          value: language.properties.endpoint
+        }
+        {
+          name: 'AZURE_LANGUAGE_KEY'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/AzureLanguageKey/)'
+        }
+        {
+          name: 'HF_TOKEN'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/HuggingFaceToken/)'
         }
       ]
     }
@@ -279,11 +339,45 @@ resource webAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2
   }
 }
 
+resource functionAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, functionApp.identity.principalId, '4633458b-17de-408a-b874-0445c86b69e6')
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource postgresConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
   parent: keyVault
   name: 'PostgresConnectionString'
   properties: {
     value: postgresConnectionString
+  }
+}
+
+resource languageKeySecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
+  parent: keyVault
+  name: 'AzureLanguageKey'
+  properties: {
+    value: language.listKeys().key1
+  }
+}
+
+resource huggingFaceTokenSecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
+  parent: keyVault
+  name: 'HuggingFaceToken'
+  properties: {
+    value: huggingFaceToken
+  }
+}
+
+resource apiSecurityKeySecret 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
+  parent: keyVault
+  name: 'ApiSecurityKey'
+  properties: {
+    value: apiSecurityKey
   }
 }
 
@@ -293,4 +387,5 @@ output functionAppUrl string = 'https://${functionApp.name}.azurewebsites.net'
 output acrLoginServer string = acr.properties.loginServer
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.properties.loginServer
 output keyVaultUri string = keyVault.properties.vaultUri
+output languageEndpoint string = language.properties.endpoint
 output postgresServerFqdn string = postgres.properties.fullyQualifiedDomainName

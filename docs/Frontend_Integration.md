@@ -1,21 +1,21 @@
 # Frontend Integration
 
-## Feature Overview
+## Feature overview
 
 The frontend's **Refresh** button now triggers the Python scraper to pull the latest articles from all news sources directly from the UI.
 
-## How It Works
+## How it works
 
-### User Flow
+### User flow
 
 1. User clicks the **"⟳ Refresh"** button in the header
-2. Frontend sends POST request to backend: `/api/scraper/refresh`
+2. Frontend sends a POST request to the backend: `/api/scraper/refresh`
 3. Backend spawns Python scraper process in the background
 4. Frontend displays "Scraper started!" message
 5. After 2 seconds, frontend fetches updated articles
 6. Success message appears: "Articles updated successfully!"
 
-### Technical Architecture
+### Technical architecture
 
 **Frontend (React):**
 - `App.jsx` - `handleRefresh()` function
@@ -31,12 +31,12 @@ The frontend's **Refresh** button now triggers the Python scraper to pull the la
 **Configuration:**
 - `appsettings.json` - Path to Python scraper script
 
-## New Files/Changes
+## New files and changes
 
 ### Created
 - `backend/NewsAggregator.Api/Controllers/ScraperController.cs`
 
-### Modified
+### Updated
 - `frontend/src/App.jsx` - Added refresh logic & UI state
 - `frontend/src/index.css` - Added refresh message styling
 - `backend/NewsAggregator.Api/appsettings.json` - Added scraper config
@@ -83,7 +83,7 @@ GET http://localhost:5000/api/scraper/status
 }
 ```
 
-## UI Feedback
+## UI feedback
 
 The refresh button provides visual feedback through:
 
@@ -105,15 +105,15 @@ The refresh button provides visual feedback through:
 :white_check_mark: **Error Handling** - Graceful failure messages  
 :white_check_mark: **Process Detection** - Can check if scraper is currently running  
 
-## How to Use
+## How to use
 
-### For End Users
+### For end users
 1. Open the News Aggregator in browser
 2. Click the **"⟳ Refresh"** button in the top right
 3. Wait for the success message
 4. Articles list updates with latest content
 
-### For Developers
+### For developers
 Test the endpoint manually:
 ```bash
 # Trigger scraper refresh
@@ -156,7 +156,7 @@ Backend logs scraper activity:
 - Verify PostgreSQL is running and the backend connection string is correct
 
 **Articles not updating**
-- Wait a moment - scraper takes ~17-20 seconds
+- Wait a moment - the scraper usually takes ~17-20 seconds
 - Check backend logs for errors
 - Manually verify scraper works: `cd scraper && python main.py`
 

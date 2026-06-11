@@ -22,7 +22,7 @@ class ArticleService:
         self.articles_url = f"{self.base_url}{self.articles_endpoint}"
     
     def create_article(self, article) -> bool:
-        """Send an article to the backend API"""
+        """Send an article to the backend API."""
         try:
             payload = article.to_dict()
             response = requests.post(
@@ -54,7 +54,7 @@ class ArticleService:
             return False
     
     def create_articles_batch(self, articles: List) -> Dict:
-        """Send multiple articles to the backend API in a single batch request"""
+        """Send multiple articles to the backend API in a single batch request."""
         try:
             batch_url = f"{self.articles_url}/batch"
             articles_data = [article.to_dict() for article in articles]
@@ -73,7 +73,7 @@ class ArticleService:
                                  batch_url, _truncate(response.text))
                     result = {}
 
-                # Ensure we have a dict to call .get on (protect against None or non-object JSON)
+                # Ensure we have a dict to call .get on (protect against None or non-object JSON).
                 if not isinstance(result, dict):
                     logger.warning("Batch response JSON is not an object; treating as empty result. URL=%s ResponseType=%s",
                                    batch_url, type(result))
@@ -90,7 +90,7 @@ class ArticleService:
                            batch_url)
 
                 if errors:
-                    # Log a small sample of errors for debugging
+                    # Log a small sample of errors for debugging.
                     sample = errors[:5]
                     logger.warning("Batch errors sample (first %d): %s", len(sample), _truncate(sample, 2000))
 
@@ -101,19 +101,19 @@ class ArticleService:
                     batch_url, response.status_code, _truncate(response.text)
                 )
                 logger.debug("Batch payload sample (truncated): %s", _truncate(articles_data, 2000))
-                # Try to extract validation errors from response
+                # Try to extract validation errors from the response.
                 error_details = response.text
                 try:
                     error_json = response.json()
                     if isinstance(error_json, dict):
-                        # Check for common API error formats
+                        # Check common API error formats.
                         if 'message' in error_json:
                             error_details = error_json['message']
                         elif 'errors' in error_json:
                             error_details = str(error_json['errors'])
                         elif 'error' in error_json:
                             error_details = error_json['error']
-                except:
+                except Exception:
                     pass
                 logger.error("Batch error details: %s", _truncate(error_details, 500))
                 return {'added': 0, 'skipped': 0, 'errors': [_truncate(response.text)]}
@@ -124,7 +124,7 @@ class ArticleService:
             return {'added': 0, 'skipped': 0, 'errors': ['request exception']}
     
     def get_articles(self) -> Optional[List[Dict]]:
-        """Retrieve all articles from the backend API"""
+        """Retrieve all articles from the backend API."""
         try:
             response = requests.get(self.articles_url, timeout=10)
             

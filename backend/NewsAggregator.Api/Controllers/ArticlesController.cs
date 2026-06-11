@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NewsAggregator.Api.Models;
 using System.Linq;
 using System;
+using NewsAggregator.Api.Security;
 using NewsAggregator.Api.Services;
 
 namespace NewsAggregator.Api.Controllers;
@@ -11,13 +13,16 @@ namespace NewsAggregator.Api.Controllers;
 public class ArticlesController : ControllerBase
 {
     private readonly IArticleService _articleService;
+    private readonly ITextAnalyticsService _textAnalytics;
     private readonly ILogger<ArticlesController> _logger;
 
     public ArticlesController(
         IArticleService articleService,
+        ITextAnalyticsService textAnalytics,
         ILogger<ArticlesController> logger)
     {
         _articleService = articleService;
+        _textAnalytics = textAnalytics;
         _logger = logger;
     }
 
@@ -111,7 +116,9 @@ public class ArticlesController : ControllerBase
             sentimentScore = a.SentimentScore,
             sentimentConfidence = a.SentimentConfidence,
             positiveWords = a.PositiveWords,
-            negativeWords = a.NegativeWords
+            negativeWords = a.NegativeWords,
+            keyPhrases = a.KeyPhrases,
+            entities = a.Entities
         };
     }
 
@@ -120,7 +127,7 @@ public class ArticlesController : ControllerBase
     {
         try
         {
-            // Check for duplicate by URL
+            // Check for duplicates by URL.
             var existing = await _articleService.GetArticleByUrlAsync(article.Url);
             if (existing != null)
             {
@@ -202,6 +209,95 @@ public class ArticlesController : ControllerBase
         {
             _logger.LogError(ex, "Error updating article {ArticleId}", id);
             return StatusCode(500, "An error occurred while updating the article");
+        }
+    }
+
+    [HttpPost("{id}/analyze")]
+    [ApiKey]
+    [EnableRateLimiting("expensive")]
+    public async Task<IActionResult> AnalyzeArticle(string id)
+    {
+        try
+        {
+            var article = await _articleService.GetArticleAsync(id);
+            if (article == null)
+            {
+                return NotFound();
+            }
+
+            var analysis = await _textAnalytics.AnalyzeAsync(article.Title, article.Description);
+            await _articleService.UpdateSentimentAsync(id, analysis);
+
+            return Ok(new
+            {
+                id,
+                sentimentLabel = analysis.Label,
+                sentimentScore = analysis.Score,
+                sentimentConfidence = analysis.Confidence,
+                positiveWords = analysis.PositiveWords,
+                negativeWords = analysis.NegativeWords,
+                keyPhrases = analysis.KeyPhrases,
+                entities = analysis.Entities
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing article {ArticleId}", id);
+            return StatusCode(500, "An error occurred while analyzing the article");
+        }
+    }
+
+    [HttpPost("analyze-missing")]
+    [ApiKey]
+    [EnableRateLimiting("expensive")]
+    public async Task<IActionResult> AnalyzeMissing([FromQuery] int? limit = null)
+    {
+        try
+        {
+            var articles = await _articleService.GetArticlesAsync();
+            var candidates = articles
+                .Where(a => _textAnalytics.ShouldReanalyze(a.SentimentLabel, a.SentimentConfidence))
+                .ToList();
+
+            // Cap the synchronous batch size to protect the App Service plan;
+            // callers can page through the remainder with repeated requests.
+            var effectiveLimit = Math.Clamp(limit ?? 50, 1, 100);
+            var batch = candidates.Take(effectiveLimit).ToList();
+
+            int analyzed = 0;
+            int failed = 0;
+
+            foreach (var article in batch)
+            {
+                try
+                {
+                    var analysis = await _textAnalytics.AnalyzeAsync(article.Title, article.Description);
+                    await _articleService.UpdateSentimentAsync(article.Id, analysis);
+                    analyzed++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    _logger.LogWarning(ex, "Failed to re-analyze article {ArticleId}", article.Id);
+                }
+            }
+
+            _logger.LogInformation("Re-analysis complete: {Analyzed} analyzed, {Failed} failed of {Processed} processed ({Candidates} candidates)",
+                analyzed, failed, batch.Count, candidates.Count);
+
+            return Ok(new
+            {
+                candidates = candidates.Count,
+                processed = batch.Count,
+                analyzed,
+                failed,
+                remaining = candidates.Count - batch.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during batch re-analysis");
+            return StatusCode(500, "An error occurred during batch re-analysis");
         }
     }
 

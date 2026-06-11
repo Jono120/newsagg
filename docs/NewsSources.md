@@ -4,9 +4,9 @@
 
 The News Aggregator uses a template-based system for adding new sources. All scrapers inherit from `base_scraper.py` which provides common functionality and patterns.
 
-## Quick Start - 3 Steps
+## Quick Start - 3 steps
 
-### Step 1: Create Your Scraper File
+### Step 1: Create your scraper file
 
 Create a new file in `scraper/scrapers/` directory (e.g., `rnz_scraper.py`):
 
@@ -66,7 +66,7 @@ class NewsSourceScraper(BaseScraper):
         return articles
 ```
 
-### Step 2: Register Your Scraper
+### Step 2: Register your scraper
 
 Add your scraper to `scraper/scrapers/__init__.py`:
 
@@ -91,7 +91,7 @@ cd scraper
 python main.py
 ```
 
-The scraper will automatically be loaded and executed!
+The scraper is loaded and run automatically.
 
 ---
 
@@ -99,7 +99,7 @@ The scraper will automatically be loaded and executed!
 
 ### 1. Choosing Your Scraping Method
 
-#### Option A: RSS/ATOM Feed (RECOMMENDED :star:)
+#### Option A: RSS/ATOM feed (recommended :star:)
 
 **Best for:** Most major news sources  
 **Difficulty:** Easy  

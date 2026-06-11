@@ -51,6 +51,7 @@ jobs:
           azd env set AZURE_SUBSCRIPTION_ID "${{ secrets.AZURE_SUBSCRIPTION_ID }}" --no-prompt
           azd env config set infra.parameters.postgresAdminPassword "${{ secrets.POSTGRES_ADMIN_PASSWORD }}" --environment "$AZURE_ENV_NAME"
           azd env config set infra.parameters.postgresAdminUsername "${{ secrets.POSTGRES_ADMIN_USERNAME }}" --environment "$AZURE_ENV_NAME"
+          azd env config set infra.parameters.apiSecurityKey "${{ secrets.API_SECURITY_KEY }}" --environment "$AZURE_ENV_NAME"
           azd env config set infra.parameters.prefix "${{ vars.AZD_PREFIX || 'newsagg' }}" --environment "$AZURE_ENV_NAME"
 
       - name: Provision infrastructure

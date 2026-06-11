@@ -45,4 +45,10 @@ public class Article
 
     [JsonPropertyName("negativeWords")]
     public List<string> NegativeWords { get; set; } = new();
+
+    [JsonPropertyName("keyPhrases")]
+    public List<string> KeyPhrases { get; set; } = new();
+
+    [JsonPropertyName("entities")]
+    public List<string> Entities { get; set; } = new();
 }

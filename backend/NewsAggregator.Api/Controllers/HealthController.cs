@@ -21,7 +21,7 @@ public class HealthController : ControllerBase
     {
         try
         {
-            // Test database connectivity
+            // Test database connectivity.
             var totalCount = await _articleService.GetTotalArticleCountAsync();
             
             var health = new
@@ -62,5 +62,20 @@ public class HealthController : ControllerBase
     public IActionResult Ping()
     {
         return Ok(new { status = "pong", timestamp = DateTime.UtcNow });
+    }
+
+    [HttpGet("ready")]
+    public async Task<IActionResult> Readiness()
+    {
+        try
+        {
+            await _articleService.GetTotalArticleCountAsync();
+            return Ok(new { status = "ready", timestamp = DateTime.UtcNow });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Readiness check failed");
+            return StatusCode(503, new { status = "not_ready", timestamp = DateTime.UtcNow });
+        }
     }
 }

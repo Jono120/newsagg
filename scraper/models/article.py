@@ -16,14 +16,16 @@ class Article:
         sentiment_score: float = 0.0,
         sentiment_confidence: float = 0.0,
         positive_words: Optional[List[str]] = None,
-        negative_words: Optional[List[str]] = None
+        negative_words: Optional[List[str]] = None,
+        key_phrases: Optional[List[str]] = None,
+        entities: Optional[List[str]] = None
     ):
         self.title = title
         self.description = description
         self.url = url
         self.source = source
         self.category = category
-        # default to UTC-aware datetime if not provided
+        # Default to UTC-aware datetime if not provided.
         utc = tz.UTC
         if published_date is None:
             self.published_date = datetime.now(utc)
@@ -35,6 +37,8 @@ class Article:
         self.sentiment_confidence = sentiment_confidence
         self.positive_words = positive_words or []
         self.negative_words = negative_words or []
+        self.key_phrases = key_phrases or []
+        self.entities = entities or []
 
     def to_dict(self):
         """Convert article to dictionary for API submission.
@@ -45,7 +49,7 @@ class Article:
         """
         pacific = tz.gettz("Pacific/Auckland")
 
-        # Normalize input to an aware datetime
+        # Normalise input to an aware datetime.
         dt: Optional[datetime] = None
         if isinstance(self.published_date, datetime):
             dt = self.published_date
@@ -56,20 +60,20 @@ class Article:
                 dt = None
 
         if dt is None:
-            # fallback to current time in NZ
+            # Fall back to current time in NZ.
             dt = datetime.now(pacific)
         else:
-            # If naive, assume UTC
+            # If naive, assume UTC.
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=tz.UTC)
-            # Convert to NZ timezone (handles DST automatically)
+            # Convert to NZ timezone (handles DST automatically).
             dt = dt.astimezone(pacific)
 
-        # Format as ISO 8601 with NZ offset (e.g., "2026-05-06T14:30:00+12:00")
-        # This preserves timezone info and is parseable by DateTimeOffset.Parse()
+        # Format as ISO 8601 with NZ offset (for example, "2026-05-06T14:30:00+12:00").
+        # This preserves timezone info and is parseable by DateTimeOffset.Parse().
         pub_date = dt.isoformat()
 
-        # ScrapedDate is always "now" in NZ timezone
+        # ScrapedDate is always "now" in NZ timezone.
         scraped_dt = datetime.now(pacific)
         scraped_date = scraped_dt.isoformat()
 
@@ -86,7 +90,9 @@ class Article:
             "sentimentScore": self.sentiment_score,
             "sentimentConfidence": self.sentiment_confidence,
             "positiveWords": self.positive_words,
-            "negativeWords": self.negative_words
+            "negativeWords": self.negative_words,
+            "keyPhrases": self.key_phrases,
+            "entities": self.entities
         }
 
     def __repr__(self):

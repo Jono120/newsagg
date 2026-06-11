@@ -1,5 +1,7 @@
-function ArticleModal({ article, onClose }) {
+function ArticleModal({ article, onClose, onSignup }) {
   const sentimentLabel = (article.sentimentLabel || 'neutral').toLowerCase()
+  const keyPhrases = article.keyPhrases || []
+  const entities = article.entities || []
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -33,7 +35,29 @@ function ArticleModal({ article, onClose }) {
         <h2>{article.title}</h2>
         
         <div className="article-description">{article.description}</div>
-        
+
+        {keyPhrases.length > 0 && (
+          <div className="article-analytics">
+            <h4>Key Phrases</h4>
+            <div className="tag-list">
+              {keyPhrases.map((phrase, idx) => (
+                <span key={idx} className="key-phrase-tag">{phrase}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {entities.length > 0 && (
+          <div className="article-analytics">
+            <h4>Entities</h4>
+            <div className="tag-list">
+              {entities.map((entity, idx) => (
+                <span key={idx} className="entity-tag">{entity}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <a 
           href={article.url} 
           target="_blank" 
@@ -42,6 +66,14 @@ function ArticleModal({ article, onClose }) {
         >
           Read Full Article →
         </a>
+
+        <button
+          type="button"
+          className="signup-cta-button modal"
+          onClick={() => onSignup?.('article-modal')}
+        >
+          Email me this NZ digest
+        </button>
 
         <div className="modal-sentiment-footer">
           <span className={`modal-sentiment-label ${sentimentLabel}`}>{sentimentLabel}</span>

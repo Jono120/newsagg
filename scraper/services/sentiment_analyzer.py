@@ -9,12 +9,12 @@ from huggingface_hub import InferenceClient
 
 logger = logging.getLogger(__name__)
 
-# Use Twitter RoBERTa for sentiment (fast and reliable)
+# Use Twitter RoBERTa for sentiment (fast and reliable).
 _SENTIMENT_MODEL = os.getenv(
     "HF_SENTIMENT_MODEL",
     "cardiffnlp/twitter-roberta-base-sentiment-latest",
 )
-# Use keyphrase extraction for key terms
+# Use keyphrase extraction for key terms.
 _EXTRACTION_MODEL = os.getenv("HF_EXTRACTION_MODEL", "ml6team/keyphrase-extraction-kbir-inspec")
 
 _HF_TOKEN = (
@@ -49,6 +49,8 @@ class SentimentTerms:
     confidence: float = 0.0
     positive_words: List[str] = field(default_factory=list)
     negative_words: List[str] = field(default_factory=list)
+    key_phrases: List[str] = field(default_factory=list)
+    entities: List[str] = field(default_factory=list)
 
 
 def _clamp01(value: Any, default: float = 0.0) -> float:
@@ -145,7 +147,7 @@ def _normalize_terms(values: Any, limit: int) -> List[str]:
 
 
 def _classify_document_with_sentiment_model(text: str) -> tuple[str, float, float]:
-    """Analyze sentiment using Twitter RoBERTa model (fast and reliable)"""
+    """Analyse sentiment using the Twitter RoBERTa model (fast and reliable)."""
     with suppress(Exception):
         out = _client.text_classification(text, model=_SENTIMENT_MODEL)
         if out:
@@ -200,7 +202,7 @@ def _extract_terms_with_keyphrase_model(text: str, limit: int = 20) -> List[str]
 
 def analyze_text_sentiment_and_terms(title: str, description: str = "") -> SentimentTerms:
     """
-    Analyze sentiment and extract key terms using fast, reliable HF models.
+    Analyse sentiment and extract key terms using fast, reliable HF models.
     
     Pipeline:
     - Twitter RoBERTa for sentiment classification (fast)
@@ -212,24 +214,24 @@ def analyze_text_sentiment_and_terms(title: str, description: str = "") -> Senti
         logger.debug("Empty text for analysis, returning defaults")
         return SentimentTerms()
 
-    # 1) Sentiment analysis using Twitter RoBERTa
+    # 1) Sentiment analysis using Twitter RoBERTa.
     label, score, confidence = _classify_document_with_sentiment_model(text)
 
-    # 2) Key-term extraction using keyphrase model
+    # 2) Key-term extraction using keyphrase model.
     extracted_terms = _extract_terms_with_keyphrase_model(text)
 
-    # 3) Extract positive/negative words based on sentiment context
+    # 3) Extract positive/negative words based on sentiment context.
     positive_words: List[str] = []
     negative_words: List[str] = []
     
     if label == "positive":
-        # Find positive words in the text
+        # Find positive words in the text.
         positive_words = _extract_candidate_words(text, limit=10)
     elif label == "negative":
-        # Find negative words in the text
+        # Find negative words in the text.
         negative_words = _extract_candidate_words(text, limit=10)
 
-    # 4) Validate and neutralize if uncertain
+    # 4) Validate and neutralise if uncertain.
     pos_count = len(positive_words)
     neg_count = len(negative_words)
     total_term_signal = pos_count + neg_count
@@ -240,7 +242,7 @@ def analyze_text_sentiment_and_terms(title: str, description: str = "") -> Senti
         and abs(pos_count - neg_count) <= _TERM_SIGNAL_BALANCE_DELTA
     )
 
-    # Neutralize if uncertain
+    # Neutralise if uncertain.
     if is_low_confidence or is_weak_term_signal or is_near_balanced:
         logger.debug("Low confidence/weak signal detected; neutralizing. "
                     "confidence=%.2f, pos=%d, neg=%d, balanced=%s",
@@ -248,7 +250,7 @@ def analyze_text_sentiment_and_terms(title: str, description: str = "") -> Senti
         label = "neutral"
         score = 0.0
 
-    # Normalize score sign based on label
+    # Normalise score sign based on label.
     if label == "positive" and score < 0:
         score = abs(score)
     elif label == "negative" and score > 0:

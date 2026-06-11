@@ -1,5 +1,6 @@
-function ArticleCard({ article, onClick }) {
+function ArticleCard({ article, onClick, onSignup }) {
   const sentimentLabel = (article.sentimentLabel || 'neutral').toLowerCase()
+  const keyPhrases = (article.keyPhrases || []).slice(0, 3)
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -21,6 +22,23 @@ function ArticleCard({ article, onClick }) {
         {article.description.length > 150 ? '...' : ''}
       </p>
       <div className="category">{article.category}</div>
+      {keyPhrases.length > 0 && (
+        <div className="key-phrases">
+          {keyPhrases.map((phrase, idx) => (
+            <span key={idx} className="key-phrase-tag">{phrase}</span>
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        className="signup-cta-button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onSignup?.('article-card')
+        }}
+      >
+        Get NZ digest updates
+      </button>
     </div>
   )
 }

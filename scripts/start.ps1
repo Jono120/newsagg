@@ -17,7 +17,7 @@ Run from repo root (or execute this file directly):
 Set-StrictMode -Version Latest
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-# Assume repository root is the parent of the scripts directory
+# Assume the repository root is the parent of the scripts directory.
 $root = Resolve-Path (Join-Path $scriptDir '..') | Select-Object -ExpandProperty Path
 
 $logs = Join-Path $root 'logs'
@@ -69,7 +69,7 @@ $frontendDir = Join-Path $root 'frontend'
 if (-not (Test-Path $frontendDir)) { Write-Host "Frontend dir not found at $frontendDir" -ForegroundColor Yellow }
 $npmArgs = @('run','dev')
 try {
-    # Use npm.cmd on Windows; fall back to npx.cmd if npm doesnt work
+    # Use npm.cmd on Windows; fall back to npx.cmd if npm does not work.
     $npmCmd = 'npm.cmd'
     if (-not (Get-Command $npmCmd -ErrorAction SilentlyContinue)) { $npmCmd = 'npx.cmd' }
     $frontendProc = Start-Process -FilePath $npmCmd -ArgumentList $npmArgs -WorkingDirectory $frontendDir -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErr -PassThru
@@ -94,7 +94,7 @@ try {
     Write-Host "Failed to call refresh endpoint: $_" -ForegroundColor Yellow
 }
 
-# Optionally run the scraper directly (this will POST to backend as usual)
+# Optionally run the scraper directly (this still POSTs to the backend).
 Write-Host "Starting scraper directly (py -3 main.py) and logging to $scraperLog"
 $scraperDir = Join-Path $root 'scraper'
 if (-not (Test-Path $scraperDir)) { Write-Host "Scraper dir not found at $scraperDir" -ForegroundColor Yellow }

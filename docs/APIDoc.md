@@ -1,3 +1,67 @@
+## Growth and conversion endpoints
+
+### `POST /api/growth/subscribe`
+
+Creates (or idempotently reuses) an email signup record with attribution fields.
+
+Request:
+
+```json
+{
+  "email": "reader@example.com",
+  "sourceContext": "header",
+  "utmSource": "meta",
+  "utmMedium": "paid_social",
+  "utmCampaign": "nz-digest-mvp"
+}
+```
+
+Response:
+
+```json
+{
+  "status": "created",
+  "signupId": "f8d85faa-2f2d-42d3-b95f-bf0f72d1b89a",
+  "createdAt": "2026-06-12T02:10:00.0000000+00:00"
+}
+```
+
+### `POST /api/growth/events`
+
+Stores analytics events for funnel analysis and channel test optimization.
+
+Request:
+
+```json
+{
+  "eventName": "page_view",
+  "channel": "google",
+  "sourceContext": "landing",
+  "utmSource": "google",
+  "utmMedium": "search",
+  "utmCampaign": "digest-intent"
+}
+```
+
+Response: `202 Accepted`
+
+### `GET /api/growth/summary?days=30&adSpendNzd=300`
+
+Returns visitors, signups, conversion rate, CPS, and signups by source.
+
+### `GET /api/growth/scale-gate?days=30&adSpendNzd=300&minConversionRate=0.05&maxCostPerSignupNzd=5`
+
+Evaluates go/no-go scaling based on conversion and cost thresholds.
+
+### `GET /api/growth/channel-tests`
+
+Returns the baseline monthly budget split and weekly optimization rule set.
+
+## Health and API docs
+
+- Swagger UI: `/docs`
+- Readiness: `GET /api/health/ready`
+
 # News Aggregator API Documentation
 
 ## Overview
@@ -74,7 +138,14 @@ Get a specific article by ID.
   "source": "Example NZ",
   "category": "NZ News",
   "publishedDate": "2026-01-09T10:00:00Z",
-  "scrapedDate": "2026-01-09T10:05:00Z"
+  "scrapedDate": "2026-01-09T10:05:00Z",
+  "sentimentLabel": "positive",
+  "sentimentScore": 0.62,
+  "sentimentConfidence": 0.88,
+  "positiveWords": ["growth"],
+  "negativeWords": [],
+  "keyPhrases": ["economic growth", "quarterly earnings"],
+  "entities": ["Reserve Bank", "New Zealand"]
 }
 ```
 
@@ -171,6 +242,65 @@ Delete an article.
 
 ---
 
+#### POST /api/articles/{id}/analyze
+Re-run text analytics (sentiment, opinion terms, key phrases, entities) for a single article using the configured provider (`AzureLanguage:Provider`). The stored article is updated in place.
+
+**Authentication:** Requires the `X-Api-Key` header matching the configured `Security:ApiKey` value. Returns `401 Unauthorized` if the header is missing or incorrect, or if no key is configured on the server (fail closed).
+
+**Rate limit:** 5 requests per minute per client IP. Exceeding the limit returns `429 Too Many Requests`.
+
+```bash
+curl -X POST http://localhost:5000/api/articles/abc123/analyze \
+  -H "X-Api-Key: <your-api-key>"
+```
+
+**Response:** `200 OK`
+```json
+{
+  "id": "abc123",
+  "sentimentLabel": "positive",
+  "sentimentScore": 0.62,
+  "sentimentConfidence": 0.88,
+  "positiveWords": ["growth"],
+  "negativeWords": [],
+  "keyPhrases": ["economic growth", "quarterly earnings"],
+  "entities": ["Reserve Bank", "New Zealand"]
+}
+```
+Returns `404 Not Found` if the article does not exist.
+
+---
+
+#### POST /api/articles/analyze-missing
+Batch re-analysis for articles whose sentiment is neutral or low-confidence (`confidence < 0.3`). The optional query parameter `limit` controls how many are processed per request; it is clamped to the range **1–100** and defaults to **50**. Use the `remaining` field in the response to page through the rest with repeated calls.
+
+**Authentication:** Requires the `X-Api-Key` header matching the configured `Security:ApiKey` value. Returns `401 Unauthorized` if the header is missing or incorrect, or if no key is configured on the server (fail closed).
+
+**Rate limit:** 5 requests per minute per client IP. Exceeding the limit returns `429 Too Many Requests`.
+
+**Example:**
+```bash
+curl -X POST "http://localhost:5000/api/articles/analyze-missing?limit=50" \
+  -H "X-Api-Key: <your-api-key>"
+```
+
+**Response:** `200 OK`
+```json
+{
+  "candidates": 142,
+  "processed": 50,
+  "analyzed": 49,
+  "failed": 1,
+  "remaining": 92
+}
+```
+
+- `candidates` — total articles eligible for re-analysis
+- `processed` — number processed in this request (capped at 100)
+- `remaining` — candidates left; call again until this reaches 0
+
+---
+
 ### Statistics
 
 #### GET /api/statistics
@@ -263,6 +393,9 @@ Invalid request data.
 }
 ```
 
+### 401 Unauthorized
+Missing or invalid `X-Api-Key` header on a protected endpoint (`/api/articles/{id}/analyze`, `/api/articles/analyze-missing`). Also returned when the server has no `Security:ApiKey` configured (the endpoints fail closed).
+
 ### 404 Not Found
 Resource not found.
 
@@ -274,6 +407,9 @@ Duplicate resource (article with same URL already exists).
   "existingId": "abc123"
 }
 ```
+
+### 429 Too Many Requests
+Rate limit exceeded on an expensive endpoint (`/api/articles/{id}/analyze`, `/api/articles/analyze-missing`, `/api/scraper/refresh`). Limit is 5 requests per minute per client IP; retry after the window resets.
 
 ### 500 Internal Server Error
 Server error occurred.
@@ -407,7 +543,8 @@ CREATE TABLE articles (
 - **All Articles**: Ordered scan over the primary listing index.
 
 ### Rate Limits
-- Local development: No limits
+- Expensive POST routes (`/api/articles/{id}/analyze`, `/api/articles/analyze-missing`, `/api/scraper/refresh`): fixed window of **5 requests per minute per client IP**, no queueing — excess requests get `429 Too Many Requests`.
+- All other endpoints: no limits.
 
 ---
 
@@ -447,7 +584,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_and_check.ps
 
 Logs are written under `logs/` in the repository root. Use these when diagnosing issues with the scraper, backend, or frontend.
 
-### Notes on behavior
+### Notes on behaviour
 - The scraper posts batches to `/api/articles/batch`; the API performs duplicate detection and returns an object with `added`, `skipped`, and `errors` fields.
 - When running the orchestrator the backend will log scraper stdout/stderr; scraper logs are also captured under `logs/scraper.*` for easier debugging.
 - Production: Ensure PostgreSQL is accessible and the application has permission to create/read/update the `articles` table.
@@ -475,6 +612,9 @@ Features:
 {
   "ConnectionStrings": {
     "NewsAggregator": "Host=localhost;Port=5432;Database=newsagg;Username=postgres;Password=postgres"
+  },
+  "Security": {
+    "ApiKey": "<key required by the protected analyse endpoints; leave empty to disable them>"
   }
 }
 ```

@@ -473,6 +473,114 @@ header p {
   text-transform: uppercase;
 }
 
+.signup-inline {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.signup-inline input {
+  min-width: 250px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+
+.signup-message {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.signup-message.success {
+  color: #b8ffc8;
+}
+
+.signup-message.error {
+  color: #ffd1d1;
+}
+
+.signup-message.info {
+  color: #e7edff;
+}
+
+.signup-cta-button {
+  border: none;
+  border-radius: 6px;
+  background: #1a3197;
+  color: #fff;
+  font-weight: 700;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+}
+
+.signup-cta-button.modal {
+  margin-top: 0.9rem;
+}
+
+.article-card .signup-cta-button {
+  margin-top: 0.85rem;
+}
+
+.footer-signup {
+  margin-left: 1rem;
+}
+
+.key-phrases,
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.key-phrase-tag,
+.entity-tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.key-phrase-tag {
+  background: #ede7f6;
+  color: #5e35b1;
+}
+
+.entity-tag {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.article-analytics {
+  margin-top: 1rem;
+}
+
+.article-analytics h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #666;
+}
+
+body.dark .key-phrase-tag {
+  background: rgba(149, 117, 205, 0.18);
+  color: #b39ddb;
+}
+
+body.dark .entity-tag {
+  background: rgba(66, 165, 245, 0.18);
+  color: #90caf9;
+}
+
+body.dark .article-analytics h4 {
+  color: #b5b5b5;
+}
+
 .loading {
   text-align: center;
   padding: 4rem;

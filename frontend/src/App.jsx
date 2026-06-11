@@ -76,10 +76,29 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [showAboutPage, setShowAboutPage] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupState, setSignupState] = useState({ type: "", message: "" });
+  const [attribution, setAttribution] = useState({
+    utmSource: "",
+    utmMedium: "",
+    utmCampaign: ""
+  });
 
   useEffect(() => {
     fetchArticles();
     fetchStatistics();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const capture = {
+      utmSource: params.get("utm_source") || "",
+      utmMedium: params.get("utm_medium") || "",
+      utmCampaign: params.get("utm_campaign") || ""
+    };
+    setAttribution(capture);
+
+    trackEvent("page_view", "landing");
   }, []);
 
   useEffect(() => {
@@ -109,18 +128,67 @@ function App() {
     }
   };
 
+  const trackEvent = async (eventName, sourceContext) => {
+    try {
+      await axios.post("/api/growth/events", {
+        eventName,
+        channel: attribution.utmSource || "direct",
+        sourceContext,
+        utmSource: attribution.utmSource || null,
+        utmMedium: attribution.utmMedium || null,
+        utmCampaign: attribution.utmCampaign || null
+      });
+    } catch (err) {
+      console.debug("Analytics event failed:", err);
+    }
+  };
+
+  const openSignupFrom = (sourceContext) => {
+    setSignupState({ type: "info", message: "Enter your email to get the NZ digest." });
+    trackEvent("cta_click", sourceContext);
+  };
+
+  const handleSignupSubmit = async (event, sourceContext) => {
+    event.preventDefault();
+    setSignupState({ type: "info", message: "Submitting..." });
+    try {
+      const response = await axios.post("/api/growth/subscribe", {
+        email: signupEmail,
+        sourceContext,
+        utmSource: attribution.utmSource || null,
+        utmMedium: attribution.utmMedium || null,
+        utmCampaign: attribution.utmCampaign || null
+      });
+
+      const status = response.data?.status;
+      if (status === "already_subscribed") {
+        setSignupState({ type: "success", message: "You are already on the digest list." });
+      } else {
+        setSignupState({ type: "success", message: "Thanks! You are subscribed to email updates." });
+      }
+
+      await trackEvent("signup_success", sourceContext);
+      setSignupEmail("");
+      await fetchStatistics();
+    } catch (err) {
+      console.error("Signup failed:", err);
+      setSignupState({ type: "error", message: "Signup failed. Please try again." });
+      await trackEvent("signup_failed", sourceContext);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     setRefreshMessage(null);
     try {
-      // Trigger the scraper on the backend
+      // Trigger the scraper on the backend.
       const response = await axios.post("/api/scraper/refresh");
       setRefreshMessage({
         type: "info",
         text: "Articles will update in a moment...",
       });
 
-      // Wait a bit then reload articles
+      // Wait briefly, then reload articles.
       setTimeout(async () => {
         await fetchArticles();
         await fetchStatistics();
@@ -250,6 +318,27 @@ function App() {
             <p></p>
             <h1>News Feed</h1>
             <p>Stay updated with the latest news from multiple Aoteroa New Zealand news sources</p>
+            <form className="signup-inline" onSubmit={(event) => handleSignupSubmit(event, "header")}>
+              <input
+                type="email"
+                required
+                value={signupEmail}
+                onChange={(event) => setSignupEmail(event.target.value)}
+                placeholder="Enter email for NZ digest"
+              />
+              <button
+                type="submit"
+                className="signup-cta-button"
+                onClick={() => openSignupFrom("header")}
+              >
+                Sign up
+              </button>
+            </form>
+            {signupState.message && (
+              <div className={`signup-message ${signupState.type}`}>
+                {signupState.message}
+              </div>
+            )}
           </div>
           <div className="header-stats">
             <MaterialUISwitch
@@ -361,6 +450,7 @@ function App() {
                       key={article.id}
                       article={article}
                       onClick={() => handleArticleClick(article)}
+                      onSignup={openSignupFrom}
                     />
                   ))}
                 </div>
@@ -403,10 +493,22 @@ function App() {
             buyMeACoffeeSlug={buyMeACoffeeSlug}
           />
         </p>
+        <form className="signup-inline footer-signup" onSubmit={(event) => handleSignupSubmit(event, "footer")}>
+          <input
+            type="email"
+            required
+            value={signupEmail}
+            onChange={(event) => setSignupEmail(event.target.value)}
+            placeholder="Daily digest email"
+          />
+          <button type="submit" className="signup-cta-button" onClick={() => openSignupFrom("footer")}>
+            Subscribe
+          </button>
+        </form>
       </div>
 
       {selectedArticle && (
-        <ArticleModal article={selectedArticle} onClose={handleCloseModal} />
+        <ArticleModal article={selectedArticle} onClose={handleCloseModal} onSignup={openSignupFrom} />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
@@ -11,15 +12,15 @@ public class ScraperController : ControllerBase
 {
     public sealed class ScraperRefreshOptions
     {
-        /// <summary>Fast refresh mode: skip content extraction and sentiment analysis</summary>
+        /// <summary>Fast refresh mode: skip content extraction and sentiment analysis.</summary>
         public bool? FastMode { get; set; }
         
-        /// <summary>Enable/disable content extraction from article URLs</summary>
+        /// <summary>Enable or disable content extraction from article URLs.</summary>
         public bool? ExtractContent { get; set; }
-        
-        /// <summary>Enable/disable Gemma sentiment inference</summary>
-        public bool? EnableGemmaSentiment { get; set; }
-        
+
+        /// <summary>Analyzer provider override: azure | huggingface | rules.</summary>
+        public string? AnalyzerProvider { get; set; }
+
         public string? SentimentModel { get; set; }
         public string? ExtractionModel { get; set; }
         public double? DocSentimentConfidenceMin { get; set; }
@@ -45,13 +46,14 @@ public class ScraperController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("expensive")]
     public async Task<IActionResult> RefreshArticles([FromBody] ScraperRefreshOptions? options)
     {
         try
         {
             _logger.LogInformation("Scraper refresh requested from frontend");
 
-            // Get the scraper path from configuration or use default
+            // Get the scraper path from configuration, or use the default.
             var configPath = _configuration["Scraper:PythonScriptPath"];
             var scraperPath = configPath ?? System.IO.Path.Combine(
                 _environment.ContentRootPath, 
@@ -61,10 +63,10 @@ public class ScraperController : ControllerBase
                 "main.py"
             );
 
-            // Normalize path for cross-platform compatibility
+            // Normalise the path for cross-platform compatibility.
             scraperPath = System.IO.Path.GetFullPath(scraperPath);
 
-            // Check if the script exists
+            // Check that the script exists.
             if (!System.IO.File.Exists(scraperPath))
             {
                 _logger.LogWarning($"Scraper script not found at: {scraperPath}");
@@ -74,7 +76,7 @@ public class ScraperController : ControllerBase
             var workingDirectory = System.IO.Path.GetDirectoryName(scraperPath);
             _logger.LogInformation($"Starting scraper from: {scraperPath}, working dir: {workingDirectory}");
 
-            // Start the scraper process asynchronously
+            // Start the scraper process asynchronously.
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -97,25 +99,23 @@ public class ScraperController : ControllerBase
                 }
             }
 
-            // Handle fast-refresh mode: disable enrichment
+            // Handle fast-refresh mode: skip content extraction and use the
+            // offline rules analyzer to avoid external API latency.
             if (options?.FastMode == true)
             {
                 process.StartInfo.Environment["SCRAPE_EXTRACT_CONTENT"] = "0";
-                process.StartInfo.Environment["HF_ENABLE_GEMMA_SENTIMENT"] = "0";
-                _logger.LogInformation("Fast refresh mode enabled: skipping content extraction and sentiment analysis");
+                process.StartInfo.Environment["ANALYZER_PROVIDER"] = "rules";
+                _logger.LogInformation("Fast refresh mode enabled: skipping content extraction and using rules analyzer");
             }
             else
             {
-                // Individual control over enrichment options
+                // Individual control over enrichment options.
                 if (options?.ExtractContent is bool extractContent)
                 {
                     process.StartInfo.Environment["SCRAPE_EXTRACT_CONTENT"] = extractContent ? "1" : "0";
                 }
 
-                if (options?.EnableGemmaSentiment is bool enableGemma)
-                {
-                    process.StartInfo.Environment["HF_ENABLE_GEMMA_SENTIMENT"] = enableGemma ? "1" : "0";
-                }
+                SetEnvIfValue("ANALYZER_PROVIDER", options?.AnalyzerProvider);
             }
 
             SetEnvIfValue("HF_SENTIMENT_MODEL", options?.SentimentModel);
@@ -144,7 +144,7 @@ public class ScraperController : ControllerBase
             process.Start();
             ActiveScraperProcesses.TryAdd(process.Id, 0);
 
-            // Log the output asynchronously without waiting for completion
+            // Log output asynchronously without waiting for completion.
             _ = Task.Run(async () =>
             {
                 try

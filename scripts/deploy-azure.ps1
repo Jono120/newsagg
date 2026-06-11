@@ -24,7 +24,10 @@ param(
     [switch]$ProvisionOnly,
 
     [Parameter(Mandatory = $true)]
-    [string]$PostgresAdminPassword
+    [string]$PostgresAdminPassword,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ApiSecurityKey
 )
 
 Set-StrictMode -Version Latest
@@ -60,6 +63,7 @@ try {
     azd env config set infra.parameters.prefix $Prefix --environment $EnvironmentName | Out-Host
     azd env config set infra.parameters.postgresAdminUsername $PostgresAdminUsername --environment $EnvironmentName | Out-Host
     azd env config set infra.parameters.postgresAdminPassword $PostgresAdminPassword --environment $EnvironmentName | Out-Host
+    azd env config set infra.parameters.apiSecurityKey $ApiSecurityKey --environment $EnvironmentName | Out-Host
 
     if ($ProvisionOnly) {
         azd provision --environment $EnvironmentName --no-prompt | Out-Host

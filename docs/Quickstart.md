@@ -30,7 +30,7 @@ Terminal 2 — Backend API
 cd backend/NewsAggregator.Api
 dotnet run
 ```
-Expected: "Now listening on: http://localhost:5000" - default backend URL
+Expected: "Now listening on: http://localhost:5000" - default backend URL.
 
 Terminal 3 — Frontend
 ```powershell
@@ -38,7 +38,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Expected: local dev URL (e.g. `http://localhost:3000`) - default frontend URL
+Expected: local dev URL (e.g. `http://localhost:3000`) - default frontend URL.
 
 Terminal 4 — Scraper (one-shot)
 ```powershell
@@ -67,6 +67,8 @@ Logs are written to `logs/`. If there are any issues, they will be added to the 
 - `POST /api/articles` — create article
 - `PUT /api/articles/{id}` — update article
 - `DELETE /api/articles/{id}` — delete article
+- `POST /api/articles/{id}/analyze` — re-run text analytics for one article
+- `POST /api/articles/analyze-missing` — batch re-analyze neutral/low-confidence articles
 
 Swagger UI: `http://localhost:5000/swagger`
 
@@ -93,7 +95,7 @@ Example article record stored in PostgreSQL:
 }
 ```
 
-PocketBase configuration in `appsettings.json`:
+PostgreSQL configuration in `appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
@@ -128,13 +130,16 @@ py -3 main.py --scheduled
 Environment variables:
 - `SCRAPE_INTERVAL_MINUTES` (default `30`)
 - `SCRAPE_EXTRACT_CONTENT` (`1` to enable, `0` to disable)
-- `HF_GEMMA_MODEL` (default `google/gemma-3-270m`)
-- `HF_ENABLE_GEMMA_SENTIMENT` (`1` to enable Gemma document sentiment inference, `0` to disable)
-- `HF_ENABLE_GEMMA_EXTRACTION` (`1` to enable Gemma key-term extraction, `0` to disable)
-- `HF_SENTIMENT_MODEL` (fallback classification model used when Gemma is unavailable)
-- `HF_EXTRACTION_MODEL` (fallback token-classification model for key terms)
+- `ANALYZER_PROVIDER` (`azure` | `huggingface` | `rules`; default `azure`). Selects the text-analytics backend. Azure failures fall back to HuggingFace automatically.
+- `AZURE_LANGUAGE_ENDPOINT` (Azure AI Language resource endpoint, used when `ANALYZER_PROVIDER=azure`)
+- `AZURE_LANGUAGE_KEY` (Azure AI Language access key)
+- `HF_TOKEN` (HuggingFace API token, used when `ANALYZER_PROVIDER=huggingface`)
+- `HF_SENTIMENT_MODEL` (HuggingFace classification model for document sentiment)
+- `HF_EXTRACTION_MODEL` (HuggingFace token-classification model for key terms)
 - `HF_DOC_SENTIMENT_CONFIDENCE_MIN` (default `0.55`; below this, label is neutralized)
 - `HF_WORD_SENTIMENT_CONFIDENCE_MIN` (default `0.65`; minimum confidence for term polarity)
+
+The Azure AI Language provider returns document sentiment with opinion mining plus **key phrases** and **named entities**, which are stored on each article (`keyPhrases`, `entities`) and shown in the UI.
 
 ## Performance Tuning
 
@@ -152,15 +157,29 @@ This skips all enrichment work and just fetches raw articles from sources (2-5x 
 Control individual enrichment options via the API:
 ```powershell
 {
-  "extractContent": false,     # Skip HTML content extraction
-  "enableGemmaSentiment": false # Skip sentiment analysis
+  "extractContent": false,      # Skip HTML content extraction
+  "analyzerProvider": "rules"   # Use the offline rules analyzer (azure | huggingface | rules)
 }
 ```
 
-### Optimizations Applied
-- **Parallel enrichment**: Content extraction and sentiment analysis now run on 4 concurrent workers (down from sequential)
-- **2-model limit**: Sentiment analysis calls at most 2 HF models (Gemma + keyphrase extraction), eliminating redundant cascades
-- **Selective extraction**: Use `HF_ENABLE_GEMMA_EXTRACTION=0` to extract key terms only when needed
+### Re-analysing stored articles
+Re-run text analytics against the configured provider without re-scraping:
+```powershell
+# Re-analyse a single article by id
+Invoke-WebRequest -Uri "http://localhost:5000/api/articles/{id}/analyze" -Method POST -Headers @{ "X-Api-Key" = "<your-api-key>" }
+
+# Re-analyse neutral / low-confidence articles (optional ?limit=N)
+Invoke-WebRequest -Uri "http://localhost:5000/api/articles/analyze-missing?limit=50" -Method POST -Headers @{ "X-Api-Key" = "<your-api-key>" }
+```
+
+Notes:
+- `POST /api/articles/{id}/analyze` and `POST /api/articles/analyze-missing` require the `X-Api-Key` header.
+- `analyze-missing` clamps `limit` to `1-100` (default `50`).
+
+### Optimisations applied
+- **Parallel enrichment**: Content extraction and sentiment analysis run on 4 concurrent workers
+- **Single Azure call set**: The Azure provider returns sentiment, opinions, key phrases and entities from one resource
+- **Fast mode**: `fastMode: true` skips content extraction and uses the offline `rules` analyzer
 
 ## Troubleshooting (quick checks)
 - Backend not starting: ensure PostgreSQL is running and the connection string is correct. Check port 5000 is free.
@@ -200,6 +219,7 @@ Invoke-WebRequest -Uri "http://localhost:5000/api/articles" -Method POST -Body $
 - Add scrapers in `scraper/scrapers/`.
 - Customize UI in `frontend/src/components/`.
 - Deploy: run PostgreSQL as a persistent service alongside the .NET API.
+- Production operations and rollback cadence: [Production-Runbook.md](./Production-Runbook.md)
 
 ## Where to get help
 - Architecture and deeper docs: [README.md](../README.md)

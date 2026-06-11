@@ -7,7 +7,11 @@ namespace NewsAggregator.Api.Services;
 
 public record SentimentResult(string Label, double Score, double Confidence);
 
-public class SentimentAnalyzerService
+/// <summary>
+/// Offline, rule-based text analytics. Serves as the <c>rules</c> provider and
+/// as the fallback when the Azure AI Language provider is unavailable.
+/// </summary>
+public class SentimentAnalyzerService : ITextAnalyticsService
 {
     private static readonly HashSet<string> POSITIVE_WORDS = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -68,7 +72,7 @@ public class SentimentAnalyzerService
     private const double HF_BLEND_WEIGHT = 0.45;
 
     /// <summary>
-    /// Analyze sentiment of a title using rule-based heuristics and optional ML.NET transformer.
+    /// Analyse sentiment from title text using rule-based heuristics.
     /// </summary>
     public SentimentResult AnalyzeTitleSentiment(string? title)
     {
@@ -77,11 +81,10 @@ public class SentimentAnalyzerService
             return new SentimentResult("neutral", 0.0, 0.0);
         }
 
-        // Rule-based scoring
+        // Rule-based scoring.
         var (ruleScore, matched, tokenCount) = AnalyzeTokens(title);
 
-        // Try to load ML.NET or Hugging Face model if available
-        // For now, we use rule-based only (ML.NET integration is optional future enhancement)
+        // ML integration may be added later. For now, this stays rule-based.
         var normalizedScore = Math.Tanh(ruleScore / 3.0);
 
         var label = normalizedScore switch
@@ -104,11 +107,50 @@ public class SentimentAnalyzerService
     }
 
     /// <summary>
-    /// Check if sentiment is low-confidence and warrants re-analysis.
+    /// <see cref="ITextAnalyticsService"/> entry point. Wraps the rule-based
+    /// sentiment scoring and surfaces matched positive/negative keywords.
+    /// </summary>
+    public Task<TextAnalyticsResult> AnalyzeAsync(string? title, string? description = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult(AnalyzeText(title, description));
+
+    /// <summary>
+    /// Synchronous rule-based analysis used by the fallback path.
+    /// </summary>
+    public TextAnalyticsResult AnalyzeText(string? title, string? description = null)
+    {
+        var text = $"{(title ?? string.Empty).Trim()} {(description ?? string.Empty).Trim()}".Trim();
+        var sentiment = AnalyzeTitleSentiment(text);
+
+        var positiveWords = new List<string>();
+        var negativeWords = new List<string>();
+        foreach (var token in Tokenize(text).Distinct())
+        {
+            if (POSITIVE_WORDS.Contains(token))
+            {
+                positiveWords.Add(token);
+            }
+            else if (NEGATIVE_WORDS.Contains(token))
+            {
+                negativeWords.Add(token);
+            }
+        }
+
+        return new TextAnalyticsResult(
+            sentiment.Label,
+            sentiment.Score,
+            sentiment.Confidence,
+            positiveWords,
+            negativeWords,
+            new List<string>(),
+            new List<string>());
+    }
+
+    /// <summary>
+    /// Check whether sentiment is low-confidence and warrants re-analysis.
     /// </summary>
     public bool ShouldReanalyze(string? label, double confidence)
     {
-        // Re-analyze if neutral or low confidence (<0.3)
+        // Re-analyse if neutral or low confidence (<0.3).
         return string.IsNullOrWhiteSpace(label)
             || label.Equals("neutral", StringComparison.OrdinalIgnoreCase)
             || confidence < 0.3;
@@ -126,7 +168,7 @@ public class SentimentAnalyzerService
         double rawScore = 0.0;
         int matched = 0;
 
-        // Phrase-level hits
+        // Phrase-level hits.
         var normalizedText = string.Join(" ", tokens);
         var positiveHits = POSITIVE_PHRASES.Count(phrase => normalizedText.Contains(phrase, StringComparison.OrdinalIgnoreCase));
         var negativeHits = NEGATIVE_PHRASES.Count(phrase => normalizedText.Contains(phrase, StringComparison.OrdinalIgnoreCase));
@@ -143,28 +185,28 @@ public class SentimentAnalyzerService
             matched += negativeHits;
         }
 
-        // Find contrast word position
+        // Find contrast word position.
         int contrastIdx = tokens.FindIndex(t => CONTRAST_WORDS.Contains(t));
 
-        // Token-level sentiment
+        // Token-level sentiment.
         for (int idx = 0; idx < tokens.Count; idx++)
         {
             var token = tokens[idx];
             double weight = 1.0;
 
-            // Intensifier boost
+            // Intensifier boost.
             if (idx > 0 && INTENSIFIERS.Contains(tokens[idx - 1]))
             {
                 weight = 1.5;
             }
 
-            // Contrast boost (tokens after 'but', 'however', etc. have higher weight)
+            // Contrast boost (tokens after 'but', 'however', etc. have higher weight).
             if (contrastIdx != -1 && idx > contrastIdx)
             {
                 weight *= 1.2;
             }
 
-            // Negation handling
+            // Negation handling.
             bool negated = false;
             if (idx > 0 && NEGATORS.Contains(tokens[idx - 1]))
             {
@@ -187,7 +229,7 @@ public class SentimentAnalyzerService
             }
         }
 
-        // Question damping
+        // Question damping.
         if (title.Contains("?"))
         {
             rawScore *= 0.9;
@@ -203,7 +245,7 @@ public class SentimentAnalyzerService
             return new List<string>();
         }
 
-        // Extract words: alphanumeric + apostrophe
+        // Extract words: alphanumeric plus apostrophe.
         var matches = Regex.Matches(text, @"[a-zA-Z']+", RegexOptions.IgnoreCase);
         return matches.Cast<Match>().Select(m => m.Value.ToLowerInvariant()).ToList();
     }

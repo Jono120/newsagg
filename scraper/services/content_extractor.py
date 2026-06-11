@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_text(s: str) -> str:
-    # Normalize whitespace
+    # Normalise whitespace.
     return ' '.join(s.split())
 
 
@@ -33,18 +33,18 @@ def extract_content(url: str, timeout: int = 10, max_chars: int = 20000) -> Opti
     try:
         soup = BeautifulSoup(html, 'lxml')
 
-        # Remove scripts/styles
+        # Remove scripts/styles.
         for tag in soup(['script', 'style', 'noscript', 'iframe']):
             tag.decompose()
 
-        # Prefer semantic article or main tags
+        # Prefer semantic article or main tags.
         main_candidate = soup.find(['article', 'main'])
         if main_candidate:
             text = main_candidate.get_text(separator=' ', strip=True)
             cleaned = _clean_text(text)
             return cleaned[:max_chars]
 
-        # Fallback: find the largest text-bearing node among divs and sections
+        # Fallback: find the largest text-bearing node among divs and sections.
         candidates = soup.find_all(['div', 'section', 'article', 'p'])
         best = ''
         for c in candidates:
@@ -59,7 +59,7 @@ def extract_content(url: str, timeout: int = 10, max_chars: int = 20000) -> Opti
             cleaned = _clean_text(best)
             return cleaned[:max_chars]
 
-        # Ultimate fallback: page title + meta description
+        # Final fallback: page title plus meta description.
         title = soup.title.string if soup.title and soup.title.string else ''
         meta = ''
         desc = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})

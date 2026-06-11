@@ -9,6 +9,7 @@ public interface IArticleService
     Task<Article?> GetArticleAsync(string id);
     Task<Article> AddArticleAsync(Article article);
     Task UpdateArticleAsync(string id, Article article);
+    Task UpdateSentimentAsync(string id, TextAnalyticsResult analysis);
     Task DeleteArticleAsync(string id);
     Task<IEnumerable<Article>> GetArticlesBySourceAsync(string source);
     Task<IEnumerable<Article>> GetArticlesByCategoryAsync(string category);
