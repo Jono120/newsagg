@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:24.16.0-alpine AS build
 WORKDIR /app
 
 COPY frontend/package*.json ./
@@ -7,8 +7,7 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-FROM nginx:1.29-alpine
-RUN apk add --no-cache gettext
+FROM nginx:1.31.1
 
 COPY frontend/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh

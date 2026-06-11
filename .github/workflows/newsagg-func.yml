@@ -20,7 +20,7 @@ concurrency:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: functionapp
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: '3.14'
 
 jobs:
   build:
@@ -75,14 +75,14 @@ jobs:
           rm release.zip
 
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_04B98E97454146D88FE18C8304E718B3 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A1705BCD3CB645B5A9BCEF34AE8E3294 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8102D7E9228544DA8D6C857538331779 }}
 
       - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@v1.5.6
         id: deploy-to-function
         with:
           app-name: 'newsagg-func'

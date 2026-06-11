@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.301 AS build
 WORKDIR /src
 
 COPY backend/NewsAggregator.Api/NewsAggregator.Api.csproj backend/NewsAggregator.Api/
@@ -9,7 +9,7 @@ COPY scraper/ scraper/
 
 RUN dotnet publish backend/NewsAggregator.Api/NewsAggregator.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.9
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080
