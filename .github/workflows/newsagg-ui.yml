@@ -6,18 +6,11 @@ name: Build and deploy UI to Azure Web App - newsagg-ui
 on:
   workflow_run:
     workflows:
-      - Build and deploy ASP.Net Core app to Azure Web App - newsagg-web
       - Build and deploy Python project to Azure Function App - newsagg-func
     types:
       - completed
     branches:
       - main
-  push:
-    branches:
-      - main
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/newsagg-ui.yml'
   workflow_dispatch:
 
 concurrency:

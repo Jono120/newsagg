@@ -4,14 +4,13 @@
 name: Build and deploy ASP.Net Core app to Azure Web App - newsagg-web
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Azure Deployment
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - 'backend/**'
-      - 'scraper/**'
-      - 'newsagg.sln'
-      - '.github/workflows/newsagg-web.yml'
   workflow_dispatch:
 
 concurrency:
@@ -20,6 +19,9 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read

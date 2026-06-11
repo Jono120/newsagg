@@ -7,9 +7,18 @@ on:
     paths:
       - 'infra/**'
       - 'azure.yaml'
+      - 'backend/**'
+      - 'scraper/**'
+      - 'newsagg.sln'
+      - 'functionapp/**'
+      - 'frontend/**'
       - 'frontend/Dockerfile'
       - 'frontend/nginx.conf.template'
       - 'frontend/docker-entrypoint.sh'
+      - '.github/workflows/azure-deployment.yml'
+      - '.github/workflows/newsagg-web.yml'
+      - '.github/workflows/newsagg-func.yml'
+      - '.github/workflows/newsagg-ui.yml'
   workflow_dispatch:
 
 permissions:
