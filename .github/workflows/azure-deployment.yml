@@ -35,7 +35,7 @@ jobs:
     environment:
       name: newsagg-production
     env:
-      AZURE_ENV_NAME: newsagg-prod
+      AZURE_ENV_NAME: NZAgg
       AZURE_LOCATION: newzealandnorth
       AZD_DEBUG_LOGGING: false
     steps:

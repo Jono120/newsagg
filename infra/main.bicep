@@ -5,17 +5,17 @@ targetScope = 'resourceGroup'
 param location string = 'newzealandnorth'
 
 @description('Naming prefix used for generated resources.')
-param prefix string = 'newsagg'
+param prefix string = 'nznewsagg'
 
 @secure()
 @description('Administrator password for the PostgreSQL server.')
 param postgresAdminPassword string
 
 @description('PostgreSQL administrator username.')
-param postgresAdminUsername string = 'pgadmin'
+param postgresAdminUsername string = 'pgadminnznewsagg'
 
 @description('Database name for the application.')
-param postgresDbName string = 'newsagg'
+param postgresDbName string = 'nznewsagg-db'
 
 @description('App Service plan SKU name.')
 param appServicePlanSku string = 'B1'
@@ -41,10 +41,11 @@ var sanitizedPrefix = toLower(replace(prefix, '-', ''))
 var webAppName = toLower('${prefix}-web')
 var functionAppName = toLower('${prefix}-func')
 var frontendAppName = toLower('${prefix}-ui')
-var acrName = toLower('${sanitizedPrefix}acr')
+var acrBaseName = toLower('${sanitizedPrefix}acr')
+var acrName = length(acrBaseName) < 5 ? '${acrBaseName}${substring(uniqueString(resourceGroup().id), 0, 5 - length(acrBaseName))}' : acrBaseName
 var postgresServerName = toLower('${sanitizedPrefix}pg')
 var keyVaultName = toLower('${sanitizedPrefix}kv')
-var storageAccountName = toLower('${sanitizedPrefix}sa')
+var storageAccountName = toLower('${sanitizedPrefix}sa${uniqueString(resourceGroup().id)}')
 var languageAccountName = toLower('${prefix}-lang')
 var postgresConnectionString = 'Host=${postgresServerName}.postgres.database.azure.com;Port=5432;Database=${postgresDbName};Username=${postgresAdminUsername};Password=${postgresAdminPassword};Ssl Mode=Require;Timeout=30'
 
@@ -330,7 +331,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2025-05-01' = {
 }
 
 resource webAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, webApp.identity.principalId, '4633458b-17de-408a-b874-0445c86b69e6')
+  name: guid(keyVault.id, webApp.id, '4633458b-17de-408a-b874-0445c86b69e6')
   scope: keyVault
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
@@ -340,7 +341,7 @@ resource webAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2
 }
 
 resource functionAppKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, functionApp.identity.principalId, '4633458b-17de-408a-b874-0445c86b69e6')
+  name: guid(keyVault.id, functionApp.id, '4633458b-17de-408a-b874-0445c86b69e6')
   scope: keyVault
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
